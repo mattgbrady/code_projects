@@ -2,7 +2,7 @@
 """
 Created on Tue Jun 14 12:39:10 2016
 
-@author: ubuntu
+@author: Matt Brady
 """
 
 import pandas as pd
@@ -34,7 +34,7 @@ warnings.simplefilter(action = "ignore", category = FutureWarning)
            
 
 
-
+#data from bloomberg
 def get_data(ticker_dict):
 
     ticker_list = list(ticker_dict.keys())    
@@ -47,18 +47,22 @@ def get_data(ticker_dict):
     
     return bl_data
 
-def my_test(x):
+#positions z-score threshold test
+def position_weights(x):
     
-    if x['CBT4TNCN Index'] >= 2:
-        return False
-    elif x['CBT4TNCN Index'] <= -2:
-        return True
+    if x['CBT4TNCN Index'] >= 1.5:
+        return -1
+    elif x['CBT4TNCN Index'] <= -1.5:
+        return 1
     else:
         return 0
-        
-def get_position_score(data_df):
+
+#create boolean dataframe used in backtest
+def get_position_weights(data_df):
     
+    hp_days = 15
     
+
     temp_df = data_df.to_frame()
     
     temp_df = (temp_df-pd.rolling_mean(temp_df,window=52))/pd.rolling_std(temp_df,window=52)
@@ -66,11 +70,93 @@ def get_position_score(data_df):
     temp_df.dropna(inplace=True)
 
     
-    temp_df['long_short'] = temp_df.apply(lambda x: my_test(x), axis=1)
+    temp_df['long_short'] = temp_df.apply(lambda x: position_weights(x), axis=1)
     
-    print(temp_df)
+    temp_df = temp_df.reindex(pd.date_range(temp_df.index[0],temp_df.index[-1],freq='B')).fillna(value=0)
+    
+    long_short_list_temp = temp_df['long_short'].values.tolist()
+    
+    long_short_list = []
+    counter = 0
+    
+    for day in range(0,len(long_short_list_temp)):
+        
+        day = counter
+        
+        
+        if len(long_short_list_temp) - 1 >= counter:
+            day_score = long_short_list_temp[day]
+            if day_score == 1:
+                counter = counter+hp_days
+                temp_list = [1] * hp_days
+                long_short_list.extend(temp_list)
+            elif day_score == -1:
+                counter = counter+hp_days
+                temp_list = [-1] * hp_days 
+                long_short_list.extend(temp_list)
+            elif day_score == 0:
+                counter = counter + 1
+                long_short_list.extend([0])
 
+
+
+    if (len(long_short_list_temp) - len(long_short_list)) == 0:
+        long_short_list = long_short_list[:]
+    else:
+        long_short_list = long_short_list[:len(long_short_list_temp) - len(long_short_list)]
+    date_range = pd.date_range(temp_df.index[0],temp_df.index[-1],freq='B')
+    
+    long_short_df = pd.DataFrame(long_short_list,index=date_range,columns=['weights'])
+    
+    new_idx = pd.date_range(long_short_df.index[0],pd.datetime.today().date(),freq='B')
+       
+    
+    long_short_df = long_short_df.reindex(new_idx)
+       
+    long_short_df.index.names = ['Date']
+    
+    long_short_df = long_short_df.shift(3)
+    long_short_df.fillna(method='ffill',inplace=True)
+    return long_short_df
+    
+def positions_bt(weights_df,index_rtn_df):
+    
+    
+    weights_df.dropna(inplace=True)
+    
+    long_times = len(weights_df[weights_df == 1].dropna())
+    short_times = len(weights_df[weights_df == -1].dropna())
+    print(long_times/len(weights_df))
+    print(short_times/len(weights_df))
+    
+    index_rtn_df = index_rtn_df.to_frame()
+    
+    column_name = index_rtn_df.columns.tolist()[0]
+    
+    weights_df.columns = [column_name]
+    
+    index_rtn_df.fillna(method='ffill',inplace=True)
+    index_rtn_df.dropna(inplace=True)
+    
+    new_idx = pd.date_range(weights_df.index[0],weights_df.index[-1],freq='B')
+
+    index_rtn_df = index_rtn_df.reindex(new_idx).fillna(method='ffill')
+    
+    
+    strategy = bt.Strategy('positions_z', [bt.algos.WeighTarget(weights_df),
+                                    bt.algos.Rebalance()])
+    
+    
+    t = bt.Backtest(strategy, index_rtn_df)
+
+    res = bt.run(t)
+    
+    res.plot()
+    res.display()
+                                    
     return
+    
+    
     
     
 
@@ -82,11 +168,12 @@ ticker_dict = {'USGG10YR Index': 'US 10yr','CBT4TNCN Index': 'CFT Spec Net Longs
 data_df = get_data(ticker_dict)
 
 
+#testing CFTC net long spec positions based on rolling z-score threshold
+wgts_positions_strgy = get_position_weights(bl_data['CBT4TNCN Index'])
 
-positions_score = get_position_score(bl_data['CBT4TNCN Index'])
+position_test_res = positions_bt(wgts_positions_strgy,bl_data['TY1 COMB Comdty'])
 
-
-
+'''
 
     
 new_idx = bl_data['CBT4TNCN Index'].dropna().index
@@ -103,7 +190,6 @@ test_ticker_df = bl_data_df['CBT4TNCN Index']
 
 
 
-'''
 
 
 
