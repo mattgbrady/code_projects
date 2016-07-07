@@ -63,8 +63,8 @@ def get_position_weights(data_df):
     hp_days = 15
     
 
-    temp_df = data_df.to_frame()
-    
+    temp_df = data_df.to_frame().dropna()
+
     temp_df = (temp_df-pd.rolling_mean(temp_df,window=52))/pd.rolling_std(temp_df,window=52)
     
     temp_df.dropna(inplace=True)
@@ -169,7 +169,7 @@ data_df = get_data(ticker_dict)
 
 
 #testing CFTC net long spec positions based on rolling z-score threshold
-wgts_positions_strgy = get_position_weights(bl_data['CBT4TNCN Index'])
+wgts_positions_strgy = get_position_weights(data_df['CBT4TNCN Index'])
 
 position_test_res = positions_bt(wgts_positions_strgy,bl_data['TY1 COMB Comdty'])
 
