@@ -81,33 +81,91 @@ def long_only_ew(data, name='Long Only'):
     return bt.Backtest(s, data)
 
 
-data_df = pd.read_excel('us_hy_credit.xlsx', index_col=0)
+    
+    
+def ma_cross_spread_test(hy_df,fast,slow):
+    
+    
+    
+    hy_df['slow'] = pd.rolling_mean(hy_df['US HY Spread'],slow)
+
+    hy_df['fast'] = pd.rolling_mean(hy_df['US HY Spread'],fast)
+    
+
+    hy_df.dropna(inplace=True)
+    
+   
+    signal_bool = (hy_df['fast'] >= hy_df['slow']).to_frame()
+    
+    signal_bool = signal_bool.shift(1)
+    
+    signal_bool.dropna(inplace=True)
+
+    signal_wghts1 = pd.DataFrame(np.where(signal_bool == True, -1, 1), index=signal_bool.index)
+    signal_wghts1.columns = ['HY Tot Index']
+
+    s1 = bt.Strategy('Long/Short ma crossover: ' + str(fast) + 'm ' + str(slow) + 'm', [bt.algos.WeighTarget(signal_wghts1),
+                               bt.algos.Rebalance()])
+                        
+    signal_wghts2 = pd.DataFrame(np.where(signal_bool == True, 0, 1), index=signal_bool.index)      
+    signal_wghts2.columns = ['HY Tot Index']                  
+                     
+    s2 = bt.Strategy('Long/Neutral ma crossover: ' + str(fast) + 'm ' + str(slow) + 'm', [bt.algos.WeighTarget(signal_wghts2),
+                               bt.algos.Rebalance()])                               
+                               
+                               
+
+    data = hy_df['HY Tot Index'].to_frame()
+
+    data.columns = ['HY Tot Index']
+    
+    long_only = long_only_ew(data, name='Long Only')
+
+    test1 = bt.Backtest(s1, data)
+
+    test2 = bt.Backtest(s2, data)
+    
+   
+    res = bt.run(test1,test2,long_only)
+    res.plot()    
+    res.display()
+    
+    
+    
+    
+def main():
+    
+    
+    data_df = pd.read_excel('us_hy_credit.xlsx', index_col=0)
+    hy_df = data_df[['US HY Monthly Return','US HY Spread']].copy()
+    hy_df['HY Tot Index'] = data_df['US HY Monthly Return'].add(1).cumprod()
+    
+    #ma_dic = {1: [3,6,9,12,24], 3: [6,9,12,24], 6: [9,12,24], 9: [12,24], 12: [24]}
+    
+    
+    ma_dic = {1: [12]}
+    
+    long_short_results = {}
+    long_neutral_results = {}
+    
+    
+
+    for key, list in ma_dic.items():
+        fast = key
+        for value in list:
+            slow = value
+            long_short_results =   ma_cross_spread_test(hy_df,fast,slow)  
+    
+    
+main()
+    
+'''
 
 
 
 
-hy_df = data_df[['US HY Monthly Return','US HY Spread']].copy()
 
 
-
-
-
-
-
-slow = 2
-fast = 12
-
-
-hy_df['slow'] = pd.rolling_mean(hy_df['US HY Spread'],slow)
-
-hy_df['fast'] = pd.rolling_mean(hy_df['US HY Spread'],fast)
-
-hy_df.dropna(inplace=True)
-
-
-signal = (hy_df['fast'] >= hy_df['slow']).to_frame()
-
-hy_df['HY Tot Index'] = data_df['US HY Monthly Return'].add(1).cumprod()
 
 
 signal.columns = ['HY Tot Index']
@@ -132,7 +190,4 @@ res.plot()
 
 
 
-''''
-#testing CFTC net long spec positions based on rolling z-score threshold
-positions_score = get_position_score(bl_data['CBT4TNCN Index'])
 '''
