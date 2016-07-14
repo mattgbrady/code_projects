@@ -158,6 +158,47 @@ def ma_cross_tot_rt_test(data_df,fast,slow):
     
     return results   
     
+def spread_crossover(data_df,slow=1,fast=12):
+    
+    
+    
+    spread_log = pd.DataFrame(np.log(data_df.ix[:,0] * 100))
+    
+    data_df['spread_z_ma'] = (spread_log - pd.expanding_mean(spread_log, min_periods=24))/  pd.expanding_std(spread_log, min_periods=24)
+    
+    data_df['spread_z_ema'] = (spread_log - pd.ewma(spread_log, min_periods = 24, halflife=12)) / pd.ewmstd(spread_log, halflife=12)
+
+       
+    data_df['spread_level_wght'] = (np.abs(data_df['spread_z_ema']) / 5) * data_df['spread_z_ema']
+    data_df['spread_level_wght'] = data_df['spread_level_wght'].clip(-1, 1)
+    
+    data_df['spread_level_wght']  = np.where(np.abs(data_df['spread_level_wght']) == 1, data_df['spread_level_wght'], 0)
+    
+    
+    asset_wght = data_df['spread_level_wght'].to_frame()
+    asset_wght.columns = [data_df.columns.values[1]]
+    
+    
+    cash_wght = (data_df['spread_level_wght'] * -1).to_frame()
+    cash_wght.columns = [data_df.columns.values[2]]
+ 
+    combine_asset_csh_wght = pd.concat([asset_wght,cash_wght], axis=1)
+    
+    combine_asset_csh_wght = combine_asset_csh_wght.shift(1)
+    
+    s1 = bt.Strategy('Long/Short Spread Level ', [bt.algos.WeighTarget(combine_asset_csh_wght),
+                               bt.algos.Rebalance()])   
+                               
+    return_data = data_df.ix[:,1:3]
+
+    strategy = bt.Backtest(s1, return_data)
+    
+    res = bt.run(strategy)
+
+    
+    res.plot()
+   
+    pass
     
     
     
@@ -169,6 +210,11 @@ def main():
     data_df = data.copy()
     data_df[['HY Tot Index','US Trs Tot Index','IG Tot Index','Cash Tot Index']] = data_df[['US HY Return','US Int. Trsy Return','US IG Return','Cash Return']].add(1).cumprod()
 
+    hy_df = data_df[['US HY Spread','HY Tot Index','Cash Tot Index']]
+    
+    hy_spread_test_res, hy_spr_score = spread_crossover(hy_df)
+
+''' 
     spread_dic = {1: [3,6,9,12,24,36], 3: [6,9,12,24,36], 6: [9,12,24,36], 9: [12,24,36], 12: [24,36]}
    
     spread_dic = {6: [12]}
@@ -200,7 +246,7 @@ def main():
     print(data[['HY Breakeven','HY Spread 3m Avg Chng']])
     
 
-'''    
+   
     for key, list in spread_dic.items():
         fast = key
         for value in list:
