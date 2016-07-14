@@ -83,100 +83,81 @@ def long_only_ew(data, name='Long Only'):
 
     
     
-def ma_cross_spread_test(hy_df,fast,slow):
+def ma_cross_spread_test(data_df,fast,slow):
     
-    hy_df_copy = hy_df.copy()
+    data_df_copy = data_df.copy()
     
-    hy_df_copy['slow'] = pd.rolling_mean(hy_df_copy['US HY Spread'],slow)
+    data_df_copy['slow'] = pd.rolling_mean(data_df_copy['US HY Spread'],slow)
 
-    hy_df_copy['fast'] = pd.rolling_mean(hy_df_copy['US HY Spread'],fast)
+    data_df_copy['fast'] = pd.rolling_mean(data_df_copy['US HY Spread'],fast)
 
-    hy_df_copy.dropna(inplace=True)
+    data_df_copy.dropna(inplace=True)
     
    
-    signal_bool = (hy_df_copy['fast'] >= hy_df_copy['slow']).to_frame()
+    signal_bool = (data_df_copy['fast'] >= data_df_copy['slow']).to_frame()
     
     signal_bool = signal_bool.shift(1)
     
     signal_bool.dropna(inplace=True)
 
-    signal_wghts1 = pd.DataFrame(np.where(signal_bool == True, -1, 1), index=signal_bool.index)
+    signal_wghts1 = pd.DataFrame(np.where(signal_bool == True,0, 1), index=signal_bool.index)
     signal_wghts1.columns = ['HY Tot Index']
     
+    cash_wght = pd.DataFrame(np.where(signal_bool == True,1, 0), index=signal_bool.index)
+    cash_wght.columns = ['Cash Tot Index']
 
-    s1 = bt.Strategy('Long/Short ma crossover: ' + str(fast) + 'm ' + str(slow) + 'm', [bt.algos.WeighTarget(signal_wghts1),
-                               bt.algos.Rebalance()])
-                        
-    signal_wghts2 = pd.DataFrame(np.where(signal_bool == True, 0, 1), index=signal_bool.index)      
-    signal_wghts2.columns = ['HY Tot Index']                  
-                     
-    s2 = bt.Strategy('Long/Neutral ma crossover: ' + str(fast) + 'm ' + str(slow) + 'm', [bt.algos.WeighTarget(signal_wghts2),
-                               bt.algos.Rebalance()])                               
-                               
-                     
-    trsry_wghts = pd.DataFrame(np.where(signal_bool == True, 1, 0), index=signal_bool.index)
-    
-    trsry_wghts.columns = ['US Trs Tot Index']
-    
-    combine_hy_trs_wght = pd.concat([signal_wghts2,trsry_wghts], axis=1)
-    
-    
-    ig_credit_wght = pd.DataFrame(np.where(signal_bool == True, 1, 0), index=signal_bool.index)
-    
-    
-    ig_credit_wght.columns = ['IG Tot Index']
-    
-    combine_hy_ig_wght = pd.concat([signal_wghts2,ig_credit_wght], axis=1)    
-    
-    
-    
-    data1 = hy_df['HY Tot Index'].to_frame()
+    combine_hy_csh_wght = pd.concat([signal_wghts1,cash_wght], axis=1)
 
-    data1.columns = ['HY Tot Index']
-    
-    data2 = hy_df[['HY Tot Index','US Trs Tot Index']]
-    
-    data3 = hy_df[['HY Tot Index','IG Tot Index']]
-    
-    
-    s3 = bt.Strategy('Long/Neutral w/ Treasuries ma crossover: ' + str(fast) + 'm ' + str(slow) + 'm', [bt.algos.WeighTarget(combine_hy_trs_wght),
-                               bt.algos.Rebalance()]) 
+    return_data = data_df_copy[['HY Tot Index','Cash Tot Index']]
 
-    s4 = bt.Strategy('Long/Neutral w/ IG ma crossover: ' + str(fast) + 'm ' + str(slow) + 'm', [bt.algos.WeighTarget(combine_hy_ig_wght),
-                               bt.algos.Rebalance()]) 
+    s1 = bt.Strategy('Long/Short Spread Crossover: ' + str(fast) + 'm ' + str(slow) + 'm', [bt.algos.WeighTarget(combine_hy_csh_wght),
+                               bt.algos.Rebalance()])   
+ 
+    beta_return = data_df_copy['HY Tot Index'].to_frame()
     
-    
-    hy_equal = pd.DataFrame(np.where(signal_bool == True, 0.5, 0.5), index=signal_bool.index)      
-    
-    
-    hy_equal.columns = ['HY Tot Index']   
-    
-    
-    ig_equal = pd.DataFrame(np.where(signal_bool == True, 0.5, 0.5), index=signal_bool.index)      
-    
-    
-    ig_equal.columns = ['IG Tot Index'] 
-    
-    combine_hy_ig_equal = pd.concat([hy_equal,ig_equal], axis=1)     
-    
-    s5= bt.Strategy('50% HY / 50% IG', [bt.algos.WeighTarget(combine_hy_ig_equal),
-                               bt.algos.Rebalance()]) 
-    
-    long_only = long_only_ew(data1, name='HY Long Beta')
+    long_only = long_only_ew(beta_return, name='HY Long Beta')
 
-    test1 = bt.Backtest(s1, data1)
-
-    test2 = bt.Backtest(s2, data1)
-    
-    test3 = bt.Backtest(s3, data2)
-    
-    test4 = bt.Backtest(s4, data3)
-    
-    hy_ig_port = bt.Backtest(s5, data3)
+    results = bt.Backtest(s1, return_data)
 
     
-    return test1, test2, test3, test4, hy_ig_port, long_only
+    return results, long_only
 
+
+def ma_cross_tot_rt_test(data_df,fast,slow):
+    
+    data_df_copy = data_df.copy()
+    
+    data_df_copy['slow'] = pd.rolling_mean(data_df_copy['HY Tot Index'],slow)
+
+    data_df_copy['fast'] = pd.rolling_mean(data_df_copy['HY Tot Index'],fast)
+
+    data_df_copy.dropna(inplace=True)
+    
+   
+    signal_bool = (data_df_copy['fast'] >= data_df_copy['slow']).to_frame()
+    
+    signal_bool = signal_bool.shift(1)
+    
+    signal_bool.dropna(inplace=True)
+
+    signal_wghts1 = pd.DataFrame(np.where(signal_bool == True, 1, -1), index=signal_bool.index)
+    signal_wghts1.columns = ['HY Tot Index']
+    
+    cash_wght = pd.DataFrame(np.where(signal_bool == True,-1, 1), index=signal_bool.index)
+    cash_wght.columns = ['Cash Tot Index']
+
+    combine_hy_csh_wght = pd.concat([signal_wghts1,cash_wght], axis=1)
+
+    return_data = data_df_copy[['HY Tot Index','Cash Tot Index']]
+
+    s1 = bt.Strategy('Long/Short Total Return Crossover: ' + str(fast) + 'm ' + str(slow) + 'm', [bt.algos.WeighTarget(combine_hy_csh_wght),
+                               bt.algos.Rebalance()])   
+
+    results = bt.Backtest(s1, return_data)
+
+    
+    return results   
+    
     
     
     
@@ -184,31 +165,59 @@ def ma_cross_spread_test(hy_df,fast,slow):
 def main():
     
     
-    data_df = pd.read_excel('us_hy_credit.xlsx', index_col=0)
-    hy_df = data_df[['US HY Return','US HY Spread','US Int. Trsy Return']].copy()
-    hy_df[['HY Tot Index','US Trs Tot Index','IG Tot Index']] = data_df[['US HY Return','US Int. Trsy Return','US IG Return']].add(1).cumprod()
+    data = pd.read_excel('us_hy_credit.xlsx', index_col=0)
+    data_df = data.copy()
+    data_df[['HY Tot Index','US Trs Tot Index','IG Tot Index','Cash Tot Index']] = data_df[['US HY Return','US Int. Trsy Return','US IG Return','Cash Return']].add(1).cumprod()
 
-    #spread_dic = {1: [3,6,9,12,24], 3: [6,9,12,24], 6: [9,12,24], 9: [12,24], 12: [24]}
+    spread_dic = {1: [3,6,9,12,24,36], 3: [6,9,12,24,36], 6: [9,12,24,36], 9: [12,24,36], 12: [24,36]}
    
-    spread_dic = {1: [12]}
+    spread_dic = {6: [12]}
     
     long_short_results = {}
     long_neutral_results = {}
-
     
+    
+    data_df['HY Spread Change'] = data_df['US HY Spread'].diff()
+    
+    period = 3
+    data['HY Spread 3m Avg Chng'] = pd.rolling_mean(data_df['HY Spread Change'], window=period)
+    
+    
+    data['HY Breakeven'] = data_df['US HY Spread'] / 12
+    
+    data['HY Spread 3m Avg Chng'].plot()
+    
+
+    plt.show()
+    
+    data['HY Breakeven'].plot()
+    plt.show()
+    
+    
+    signal_bool = pd.DataFrame()
+    signal_bool = (data['HY Breakeven'] >= data['HY Spread 3m Avg Chng']).to_frame()
+    
+    print(data[['HY Breakeven','HY Spread 3m Avg Chng']])
+    
+
+'''    
     for key, list in spread_dic.items():
         fast = key
         for value in list:
             slow = value
-            long_short, long_neutral, long_trsy, long_ig, hy_ig_port, beta =   ma_cross_spread_test(hy_df,fast,slow)  
-            
-        res = bt.run(long_short,long_neutral,long_trsy,long_ig,hy_ig_port,beta)
-        #res.plot() 
-        #res.display()
+            #long_short_cash_spread, beta = ma_cross_spread_test(data_df,fast,slow)   
+            long_short_cash_tot = ma_cross_tot_rt_test(data_df,fast,slow)   
+            #res = bt.run(long_short_cash_spread,long_short_cash_tot, beta)
+            res = bt.run(long_short_cash_tot)
+            #res.plot(logy=True) 
+            res.display()
 
-        #res.to_csv(sep=',',path='output.csv')
+'''
+#res.to_csv(sep=',',path='output.csv')
+        
+    
 
-
+'''
     data_df['US HY Spread log'] = np.log(data_df['US HY Spread'] * 100)
     hy_df['HY Spread MA'] = (data_df['US HY Spread log'] - pd.expanding_mean(data_df['US HY Spread log'], min_periods=24))/  pd.expanding_std(data_df['US HY Spread log'], min_periods=24)
     
@@ -223,7 +232,7 @@ def main():
     
     
     plt.show()
-
+'''
     
 main()
     
