@@ -164,11 +164,106 @@ def spread_crossover(data_df,slow=1,fast=12):
     
     spread_log = pd.DataFrame(np.log(data_df.ix[:,0] * 100))
     
+    
     data_df['spread_z_ma'] = (spread_log - pd.expanding_mean(spread_log, min_periods=24))/  pd.expanding_std(spread_log, min_periods=24)
     
     data_df['spread_z_ema'] = (spread_log - pd.ewma(spread_log, min_periods = 24, halflife=12)) / pd.ewmstd(spread_log, halflife=12)
+    
+    
+    data_df['spread_z_ema'] = pd.rolling_mean(data_df['spread_z_ema'], window=3)
+     
+    data_df['slow'] = pd.rolling_mean(data_df['US HY Spread'],slow)
 
-       
+    data_df['fast'] = pd.rolling_mean(data_df['US HY Spread'],fast)
+    
+    data_df['diff'] = (data_df['slow'] - data_df['fast']) * -1
+    
+    data_df['diff'] = data_df['diff'] + 1
+    
+    data_df['diff'] = np.log(data_df['diff'])
+    
+    data_df['tren_z_ma'] = (data_df['diff'] - pd.expanding_mean(data_df['diff'], min_periods=24))/  pd.expanding_std(data_df['diff'], min_periods=24)
+    
+    data_df['tren_z_ma']  = pd.rolling_mean(data_df['tren_z_ma'], window=3)
+    trend_valuation_df = pd.concat([data_df['spread_z_ema'],data_df['tren_z_ma']], axis=1)
+
+    
+    trend_valuation_df.dropna(inplace=True)
+    trend_valuation_df.plot()
+    plt.show()
+    
+    algo_wghts_df = pd.DataFrame()
+    wghts_array = []
+    
+    valuation_threshold_cheap = 1
+    valuation_threshold_rich = -1.0
+    trend_threshold_tightening = 0.1
+    trend_threshold_widening = -0.1
+    
+    data_df['spread_z_ma'].plot()
+    plt.show()
+    
+    
+
+    for score in trend_valuation_df.values:
+        valuation_score = score[0]
+        trend_score = score[1]
+        
+        if (trend_score >= -0.2 and valuation_score >= -1):
+            wghts_array.append(min(1,abs(trend_score-valuation_score) / 1))
+        else:
+            wghts_array.append(0)
+        #elif trend_score <= -0.1 and valuation_score <= valuation_threshold_cheap:
+        #    wghts_array.append(-1)
+        #elif valuation_score >= valuation_threshold_cheap:
+        #    wghts_array.append(1)
+        #else:
+        #    wghts_array.append(0)   
+    
+    wghts_df = pd.DataFrame(wghts_array, index = trend_valuation_df.index)
+    
+    print(wghts_df)
+
+    long = wghts_df[wghts_df == 1].count()[0] / len(trend_valuation_df)
+    neutral = wghts_df[wghts_df == 0].count()[0] / len(trend_valuation_df)
+    short = wghts_df[wghts_df == -1].count()[0] / len(trend_valuation_df)
+    
+    wghts_df.columns = [data_df.columns.values[1]]
+    
+    wghts_df = wghts_df.shift(1)
+    
+    
+    s1 = bt.Strategy('Valuation & Trend ', [bt.algos.WeighTarget(wghts_df),
+                               bt.algos.Rebalance()])
+    
+    return_data = data_df.ix[:,1].to_frame()
+    return_data.columns = [data_df.columns.values[1]]
+
+    strategy = bt.Backtest(s1, return_data)
+    
+    res = bt.run(strategy)
+    
+    res.plot()
+    res.display()
+    print(long,neutral,short)
+
+
+   
+    
+      
+'''            
+            
+        if trend_score >= trend_threshold and valuation_score >= (valuation_threshold * -1):
+            wghts_array.append(1)
+        elif trend_score <= (trend_threshold * -1) and valuation_score <= valuation_threshold:
+            wghts_array.append(-1)
+        elif trend_score <= trend_threshold and trend_score >= (trend_threshold * -1):
+            wghts_array.append(1)
+        else:
+            wghts_array.append(0)
+  
+
+    
     data_df['spread_level_wght'] = (np.abs(data_df['spread_z_ema']) / 5) * data_df['spread_z_ema']
     data_df['spread_level_wght'] = data_df['spread_level_wght'].clip(-1, 1)
     
@@ -197,9 +292,9 @@ def spread_crossover(data_df,slow=1,fast=12):
 
     
     res.plot()
-   
+ 
     pass
-    
+'''   
     
     
     
@@ -212,7 +307,7 @@ def main():
 
     hy_df = data_df[['US HY Spread','HY Tot Index','Cash Tot Index']]
     
-    hy_spread_test_res, hy_spr_score = spread_crossover(hy_df)
+    spread_crossover(hy_df)
 
 ''' 
     spread_dic = {1: [3,6,9,12,24,36], 3: [6,9,12,24,36], 6: [9,12,24,36], 9: [12,24,36], 12: [24,36]}
