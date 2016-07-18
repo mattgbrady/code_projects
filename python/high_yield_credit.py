@@ -161,7 +161,7 @@ def ma_cross_tot_rt_test(data_df,fast,slow):
 def spread_val_score(data_df):  
 
     data_df = np.log(data_df * 100)
-    data_df['spread_z_ema'] = (data_df - pd.ewma(data_df, min_periods = 60, halflife=24)) / pd.ewmstd(data_df, halflife=24)
+    data_df['spread_z_ema'] = (data_df - pd.ewma(data_df, min_periods = 60, halflife=60)) / pd.ewmstd(data_df, halflife=60)
     
     data_df['spread_z_ema'].dropna(inplace=True)
     
@@ -178,16 +178,18 @@ def trsy_bool_position(data_df):
     trsy_bool_array = []
     for date in range(0,len(date_array)):
 
-        score = data_df.ix[date].values
+        score = data_df.ix[date].values[0]
 
-        if score == 0:
-            trsy_bool_array.append(0)
-        elif score == 1:
-            trsy_bool_array.append(-1)
+        if score == 1:
+            trsy_bool_array.extend([-1])
+        elif score == -1:
+            trsy_bool_array.extend([1])
+        elif score == 0:
+            trsy_bool_array.extend([0])
         else:
-            trsy_bool_array.append(1)
-    
-    
+            temp = score * -1
+            trsy_bool_array.extend([0])
+
     trsy_bool_df = pd.DataFrame(trsy_bool_array,index=date_array )
     return trsy_bool_df
         
@@ -204,9 +206,9 @@ def spread_val_backtest(data_df_score, return_series_df):
     
     combined_positions = pd.concat([signal_bool,trsy_bool], axis=1)
     
-    print(combined_positions)
+
     combined_positions = combined_positions.shift(1)
-    
+     
     start_date = np.min(combined_positions.index.values)
     end_date = np.max(combined_positions.index.values)
     
@@ -220,13 +222,19 @@ def spread_val_backtest(data_df_score, return_series_df):
 
     
     res = bt.run(strategy)
+    
+    res.plot()
+    res.plot_weights()
+    res.display()
 
- 
+    return res
+     
     pass    
 
 def spread_wghts(data_df_score):
 
-    hp_months = 3
+    hp_months_cheap = 6
+    hp_months_rich = 6
 
     counter = 0
     
@@ -234,32 +242,35 @@ def spread_wghts(data_df_score):
     
     signal = []
     
-    signal_abs_threshold = 1.5
+    signal_abs_threshold_cheap= 1.5
+    signal_abs_threshold_rich= 1.5
     
-
+  
     for date in range(0,len(date_array)):
-
-        day = counter
-        print(date)
-        score = data_df_score.ix[date]
+  
+        
 
         if len(data_df_score) - 1 >= counter:
+            
+            score = data_df_score.ix[counter]
 
-            if score >= signal_abs_threshold:
-                counter = counter+hp_months
-                temp_list = [1] * hp_months
+            if score > signal_abs_threshold_cheap:
+                counter = counter+hp_months_cheap
+                temp_list = [1] * hp_months_cheap
                 signal.extend(temp_list)
                 
-            elif score <= (signal_abs_threshold * -1):
-                counter = counter+hp_months
-                temp_list = [-1] * hp_months 
+            elif score < (signal_abs_threshold_rich * -1):
+                counter = counter+hp_months_rich
+                temp_list = [-1] * hp_months_rich 
                 signal.extend(temp_list)
                 
-            elif (score <= signal_abs_threshold) and score >= (signal_abs_threshold * -1):
+            elif (score <= signal_abs_threshold_cheap) and score >= (signal_abs_threshold_rich * -1):
                 counter = counter + 1
                 signal.extend([0])
-                
-    signal = signal[:len(date_array)]   
+   
+    
+    signal = signal[:len(date_array)]  
+    
         
     return pd.DataFrame(signal,columns=['score'], index=data_df_score.index.values)
  
@@ -328,7 +339,7 @@ def spread_crossover(data_df,slow=1,fast=12):
     
     wghts_df = pd.DataFrame(wghts_array, index = trend_valuation_df.index)
     
-    print(wghts_df)
+ 
 
     long = wghts_df[wghts_df == 1].count()[0] / len(trend_valuation_df)
     neutral = wghts_df[wghts_df == 0].count()[0] / len(trend_valuation_df)
@@ -419,6 +430,8 @@ def main():
     hy_val_score = spread_val_score(hy_spread)
     
     hy_val_res = spread_val_backtest(hy_val_score,hy_return_series)
+    
+    hy_val_res.plot()
     
     #spread_crossover(hy_df)
 
