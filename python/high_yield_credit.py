@@ -181,7 +181,7 @@ def trsy_bool_position(data_df):
         score = data_df.ix[date].values[0]
 
         if score == 1:
-            trsy_bool_array.extend([-1])
+            trsy_bool_array.extend([0])
         elif score == -1:
             trsy_bool_array.extend([1])
         elif score == 0:
@@ -261,7 +261,7 @@ def spread_wghts(data_df_score):
                 
             elif score < (signal_abs_threshold_rich * -1):
                 counter = counter+hp_months_rich
-                temp_list = [-1] * hp_months_rich 
+                temp_list = [0] * hp_months_rich 
                 signal.extend(temp_list)
                 
             elif (score <= signal_abs_threshold_cheap) and score >= (signal_abs_threshold_rich * -1):
@@ -273,7 +273,28 @@ def spread_wghts(data_df_score):
     
         
     return pd.DataFrame(signal,columns=['score'], index=data_df_score.index.values)
- 
+
+def excess_bond_mm_score(data_df):
+    
+    rolling_period = 1
+    
+    
+    rolling_change = pd.DataFrame.pct_change(data_df,periods=rolling_period)
+
+    column_one = data_df.columns.values[0]
+    column_two = data_df.columns.values[1]
+    
+    
+    data_diff = rolling_change[column_one] - rolling_change[column_two]
+    
+    data_diff_res = pd.DataFrame()
+    
+    #data_diff_res['rtn_z_ema'] = (data_diff - pd.ewma(data_diff, min_periods = 60, halflife=12)) / pd.ewmstd(data_diff, halflife=12)
+    #data_diff_res['rtn_z_ma'] = (data_diff - pd.expanding_mean(data_diff, min_periods=24))/  pd.expanding_std(data_diff, min_periods=24)
+
+
+    return data_diff.to_frame()
+    
     
 def spread_crossover(data_df,slow=1,fast=12):
     
@@ -413,7 +434,41 @@ def spread_crossover(data_df,slow=1,fast=12):
     pass
 '''   
     
+def mm_test(score_df, returns_frame):
     
+    #make two sub strategies and then merge test
+    score_df = score_df.shift(1)
+    score_df.columns = ['score']
+    
+    print(returns_frame)
+    
+    score_df['bond_wght'] = np.where(score_df.score > 0, 1, np.where(score_df.score < 0,-1, np.nan))
+
+    bond_series = returns_frame.columns.values[0]
+    treasuries_series = returns_frame.columns.values[1]
+    
+    score_df['treasury_wght'] = np.where(score_df.score > 0, -1, np.where(score_df.score < 0,1, np.nan))
+    
+    bond_wght =  score_df['bond_wght'].to_frame()
+    bond_wght.columns = ['US HY Return']
+    treasury_wght = score_df['treasury_wght'].to_frame()
+    treasury_wght.columns = ['US Int. Trsy Return']
+    
+    
+    
+    combined_wghts = pd.concat([bond_wght,treasury_wght], axis=1)
+    print(combined_wghts)
+    s1 = bt.Strategy('momentum', [bt.algos.SelectAll(),
+                                  bt.algos.WeighTarget(combined_wghts),
+                               bt.algos.Rebalance()])   
+    
+    strategy = bt.Backtest(s1, returns_frame)
+
+    res = bt.run(strategy)
+
+    res.display_monthly_returns()
+
+    res.plot()  
     
 def main():
     
@@ -427,11 +482,13 @@ def main():
     hy_return_series =  data_df[['US HY Return','US Int. Trsy Return']].add(1).cumprod()
 
     
-    hy_val_score = spread_val_score(hy_spread)
+    #hy_val_score = spread_val_score(hy_spread)
     
-    hy_val_res = spread_val_backtest(hy_val_score,hy_return_series)
+    #hy_val_res = spread_val_backtest(hy_val_score,hy_return_series)
+     
+    hy_ex_rtn_score = excess_bond_mm_score(hy_return_series)
+    hy_mm_test = mm_test(hy_ex_rtn_score,hy_return_series)
     
-    hy_val_res.plot()
     
     #spread_crossover(hy_df)
 
