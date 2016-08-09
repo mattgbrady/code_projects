@@ -276,7 +276,7 @@ def spread_wghts(data_df_score):
 
 def excess_bond_mm_score(data_df):
     
-    rolling_period = 1
+    rolling_period = 3
     
     
     rolling_change = pd.DataFrame.pct_change(data_df,periods=rolling_period)
@@ -434,42 +434,250 @@ def spread_crossover(data_df,slow=1,fast=12):
     pass
 '''   
     
-def mm_test(score_df, returns_frame):
+def credit_momentum_test(data_df):
     
-    #make two sub strategies and then merge test
-    score_df = score_df.shift(1)
-    score_df.columns = ['score']
+    test_data = data_df[['US HY Return','US Int. Trsy Return']].add(1).cumprod()
     
-    print(returns_frame)
+    rolling_period = 3
     
-    score_df['bond_wght'] = np.where(score_df.score > 0, 1, np.where(score_df.score < 0,-1, np.nan))
+    
+    rolling_change = pd.DataFrame.pct_change(test_data,periods=rolling_period)
 
-    bond_series = returns_frame.columns.values[0]
-    treasuries_series = returns_frame.columns.values[1]
+    column_one = test_data.columns.values[0]
+    column_two = test_data.columns.values[1]
     
-    score_df['treasury_wght'] = np.where(score_df.score > 0, -1, np.where(score_df.score < 0,1, np.nan))
     
-    bond_wght =  score_df['bond_wght'].to_frame()
+    data_diff = rolling_change[column_one] - rolling_change[column_two]
+    
+    data_diff['rolling_z'] = (data_diff - pd.expanding_mean(data_diff, min_periods=24))/  pd.expanding_std(data_diff, min_periods=24)
+    
+    
+    weights = pd.DataFrame(index=data_diff.index)
+    
+    
+    weights['bond_wght'] = data_diff['rolling_z']
+    weights['treasury_wght'] = data_diff['rolling_z'] * -1
+    
+    weights = weights / 0.5
+    weights.dropna(inplace=True)
+    
+    
+    weights = weights.clip(-1, 1)
+
+    #weights['bond_wght'] = np.where(data_diff > 0, 1.0, np.where(data_diff< 0,-1.0, np.nan))
+    
+    
+    #weights['treasury_wght'] = np.where(data_diff > 0, -1.0, np.where(data_diff < 0,1.0, np.nan))
+    
+    bond_wght =  weights['bond_wght'].to_frame()
     bond_wght.columns = ['US HY Return']
-    treasury_wght = score_df['treasury_wght'].to_frame()
+    treasury_wght = weights['treasury_wght'].to_frame()
     treasury_wght.columns = ['US Int. Trsy Return']
     
     
     
     combined_wghts = pd.concat([bond_wght,treasury_wght], axis=1)
-    print(combined_wghts)
-    s1 = bt.Strategy('momentum', [bt.algos.SelectAll(),
-                                  bt.algos.WeighTarget(combined_wghts),
-                               bt.algos.Rebalance()])   
     
-    strategy = bt.Backtest(s1, returns_frame)
-
-    res = bt.run(strategy)
-
-    res.display_monthly_returns()
-
-    res.plot()  
+    combined_wghts = combined_wghts.shift(1)
     
+    combined_wghts.dropna(inplace=True)
+    
+
+    weighted_returns = combined_wghts * data_df[['US HY Return','US Int. Trsy Return']]
+    
+    portfolio_return = weighted_returns.sum(axis=1).to_frame()
+    
+    
+    portfolio_return =  portfolio_return.add(1).cumprod()
+
+    hy_mm = long_only_ew(portfolio_return, name='HY Momentum')
+    
+    return hy_mm, combined_wghts
+
+
+def equity_mm_test(data_df):
+    
+    test_data = data_df[['S&P 500 Return','Cash Return']].add(1).cumprod()
+    
+    rolling_period = 3
+    
+    
+    rolling_change = pd.DataFrame.pct_change(test_data,periods=rolling_period)
+
+    column_one = test_data.columns.values[0]
+    column_two = test_data.columns.values[1]
+    
+    
+    data_diff = rolling_change[column_one] - rolling_change[column_two]
+    
+    data_diff['rolling_z'] = (data_diff - pd.expanding_mean(data_diff, min_periods=24))/  pd.expanding_std(data_diff, min_periods=24)
+    
+    
+    weights = pd.DataFrame(index=data_diff.index)
+    
+    
+    weights['bond_wght'] = data_diff['rolling_z']
+    weights['treasury_wght'] = data_diff['rolling_z'] * -1
+    
+    weights = weights / 0.5
+    weights.dropna(inplace=True)
+    
+    
+    weights = weights.clip(-1, 1)
+
+    #weights['bond_wght'] = np.where(data_diff > 0, 1.0, np.where(data_diff< 0,-1.0, np.nan))
+    
+    
+    #weights['treasury_wght'] = np.where(data_diff > 0, -1.0, np.where(data_diff < 0,1.0, np.nan))
+    
+    bond_wght =  weights['bond_wght'].to_frame()
+    bond_wght.columns = ['US HY Return']
+    treasury_wght = weights['treasury_wght'].to_frame()
+    treasury_wght.columns = ['US Int. Trsy Return']
+    
+    combined_wghts = pd.concat([bond_wght,treasury_wght], axis=1)
+    
+    combined_wghts = combined_wghts.shift(1)
+    
+    combined_wghts.dropna(inplace=True)    
+    
+    
+    weighted_returns = combined_wghts * data_df[['US HY Return','US Int. Trsy Return']]
+    
+    portfolio_return = weighted_returns.sum(axis=1).to_frame()
+    
+    portfolio_return =  portfolio_return.add(1).cumprod()
+
+    eq_mm = long_only_ew(portfolio_return, name='Equity Momentum')
+    
+    return eq_mm, combined_wghts
+
+def equity_vol_test(data_frame):
+    
+    rolling_period = 1
+    
+    rolling_change = pd.DataFrame.pct_change(np.log(data_frame['Equity Volatility']),periods=rolling_period)
+    
+    
+    rolling_change['rolling_z'] = (rolling_change - pd.expanding_mean(rolling_change, min_periods=24))/  pd.expanding_std(rolling_change, min_periods=24)
+    rolling_change['rolling_z'] = rolling_change['rolling_z'].to_frame()
+    
+    weights = pd.DataFrame(index=rolling_change['rolling_z'].index)
+    
+    weights['bond_wght'] = rolling_change['rolling_z'] * -1
+    
+    weights['treasury_wght'] = rolling_change['rolling_z']
+    
+    weights = weights / 1.5
+    weights.dropna(inplace=True)
+    weights = weights.clip(-1, 1)
+
+    bond_wght =  weights['bond_wght'].to_frame()
+    bond_wght.columns = ['US HY Return']
+    treasury_wght = weights['treasury_wght'].to_frame()
+    treasury_wght.columns = ['US Int. Trsy Return']
+    
+    combined_wghts = pd.concat([bond_wght,treasury_wght], axis=1)
+    
+    combined_wghts = combined_wghts.shift(1)
+    
+    combined_wghts.dropna(inplace=True)    
+
+    weighted_returns = combined_wghts * data_frame[['US HY Return','US Int. Trsy Return']]
+    
+    portfolio_return = weighted_returns.sum(axis=1).to_frame()
+    
+    portfolio_return =  portfolio_return.add(1).cumprod()
+
+    eq_vol = long_only_ew(portfolio_return, name='Equity Volatility')
+
+    
+    return eq_vol, combined_wghts
+
+def spread_holding_test(data_df):
+    
+    data_df['lg_spread'] = np.log(data_df['US HY Spread'] * 100)
+    data_df['spread_z_ema'] = (data_df['lg_spread'] - pd.expanding_mean(data_df['lg_spread'], min_periods=24))/  pd.expanding_std(data_df['lg_spread'], min_periods=24)
+    
+    data_df['spread_z_ema'].dropna(inplace=True)
+    
+    data_df['spread_z_ema'].plot()
+
+    hp_months_cheap = 12
+    hp_months_rich = 12
+
+    counter = 0
+    
+    date_array = data_df.index.values
+    
+    signal = []
+    
+    signal_abs_threshold_cheap= 2.0
+    signal_abs_threshold_rich= 1.5
+    
+  
+    for date in range(0,len(date_array)):
+  
+        
+
+        if len(data_df['spread_z_ema']) - 1 >= counter:
+            
+            score = data_df['spread_z_ema'].ix[counter]
+
+            if score > signal_abs_threshold_cheap:
+                counter = counter+hp_months_cheap
+                temp_list = [1] * hp_months_cheap
+                signal.extend(temp_list)
+                
+            elif score < (signal_abs_threshold_rich * -1):
+                counter = counter+hp_months_rich
+                temp_list = [-1] * hp_months_rich 
+                signal.extend(temp_list)
+                
+            elif (score <= signal_abs_threshold_cheap) and score >= (signal_abs_threshold_rich * -1):
+                counter = counter + 1
+                signal.extend([1])
+   
+    
+    signal = signal[:len(date_array)]    
+    
+    weights = pd.DataFrame(signal,index=data_df['spread_z_ema'].index,columns=['US HY Return'])
+
+
+    weights['bond_wght'] = weights
+    
+       
+    weights['treasury_wght'] = weights['US HY Return'] * -1
+
+    bond_wght =  weights['bond_wght'].to_frame()
+    bond_wght.columns = ['US HY Return']
+    treasury_wght = weights['treasury_wght'].to_frame()
+    treasury_wght.columns = ['US Int. Trsy Return']
+    
+    
+    combined_wghts = pd.concat([bond_wght,treasury_wght], axis=1)
+    
+    combined_wghts = combined_wghts.shift(1)
+    
+    combined_wghts.dropna(inplace=True)    
+
+    weighted_returns = combined_wghts * data_df[['US HY Return','US Int. Trsy Return']]
+    
+    portfolio_return = weighted_returns.sum(axis=1).to_frame()
+    
+    portfolio_return =  portfolio_return.add(1).cumprod()
+
+    risk_premia = long_only_ew(portfolio_return, name='Risk Premia')
+
+    return risk_premia, combined_wghts
+
+def ism_manufacturing_test(data_df):
+    
+    
+    pass
+
+
+
 def main():
     
     
@@ -477,17 +685,78 @@ def main():
     data_df = data.copy()
     data_df[['HY Tot Index','US Trs Tot Index','IG Tot Index','Cash Tot Index']] = data_df[['US HY Return','US Int. Trsy Return','US IG Return','Cash Return']].add(1).cumprod()
 
-
+    
     hy_spread = data_df['US HY Spread'].to_frame()
-    hy_return_series =  data_df[['US HY Return','US Int. Trsy Return']].add(1).cumprod()
-
+    
+    hy_monthly_returns = data_df[['US HY Return','US Int. Trsy Return']]
+    
     
     #hy_val_score = spread_val_score(hy_spread)
     
     #hy_val_res = spread_val_backtest(hy_val_score,hy_return_series)
      
-    hy_ex_rtn_score = excess_bond_mm_score(hy_return_series)
-    hy_mm_test = mm_test(hy_ex_rtn_score,hy_return_series)
+
+    hy_mm_test, hy_mm_wghts = credit_momentum_test(hy_monthly_returns)
+
+    hy_eq_mm_test, hy_eq_mm_wghts = equity_mm_test(data_df[['US HY Return','Cash Return','S&P 500 Return','US Int. Trsy Return']])
+    
+    hy_eq_vol_test, hy_eq_vol_wghts = equity_vol_test(data_df[['US HY Return','US Int. Trsy Return','Equity Volatility']])
+
+    hy_sp_test, hy_sp_wghts = spread_holding_test(data_df[['US HY Return','US Int. Trsy Return','US HY Spread']])
+    
+    #ism_test, ism_wghts = ism_manufacturing_test
+    
+    ratio = 1/4
+    hy_mm_wghts = hy_mm_wghts * ratio
+    hy_eq_mm_wghts = hy_eq_mm_wghts * ratio
+    hy_eq_vol_wghts = hy_eq_vol_wghts * ratio
+    hy_sp_wghts = hy_sp_wghts * ratio
+    
+    combined_wghts = hy_mm_wghts + hy_eq_mm_wghts + hy_eq_vol_wghts + hy_sp_wghts
+    
+    combined_wghts = pd.rolling_mean(combined_wghts, window=2)
+    
+    max_value = (max(combined_wghts.max()))
+    
+    combined_wghts = combined_wghts / max_value
+    
+    weighted_returns = combined_wghts * data_df[['US HY Return','US Int. Trsy Return']]
+    
+    combined_portfolio = weighted_returns.sum(axis=1).to_frame()
+    
+    combined_portfolio =  combined_portfolio.add(1).cumprod()
+
+    combined_test = long_only_ew(combined_portfolio, name='Combined')   
+    res = bt.run(combined_test,hy_mm_test,hy_eq_mm_test,hy_eq_vol_test,hy_sp_test)
+
+    rolling_return = rolling_change = pd.DataFrame.pct_change(res.prices,periods=12)
+    res.plot()
+    res.display()
+    
+    temp_df = pd.DataFrame(np.where(combined_wghts>0,True,False),index=combined_wghts.index,columns=['High Yield Weight','Treasury Weight'])
+    
+    values_temp = temp_df['High Yield Weight'].values 
+    
+    x = np.diff(np.where(np.concatenate(([values_temp[0]],
+                                     values_temp[:-1] != values_temp[1:],
+                                     [True])))[0])[::2]
+
+    print(np.mean(x),np.median(x))
+'''   
+    combined_data = res.prices[4:]
+    
+    s = bt.Strategy('combined', [bt.algos.RunMonthly(),
+                       bt.algos.SelectAll(),
+                       bt.algos.WeighEqually(),
+                       bt.algos.Rebalance()])
+    # create and run
+    combined = bt.Backtest(s, combined_data)
+    res2 = bt.run(combined,hy_mm_test,hy_eq_mm_test,hy_eq_vol_test)    
+    
+    res2.plot()
+    res2.display()
+'''  
+    
     
     
     #spread_crossover(hy_df)
