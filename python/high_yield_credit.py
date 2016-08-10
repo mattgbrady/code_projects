@@ -381,7 +381,7 @@ def spread_crossover(data_df,slow=1,fast=12):
     
     res = bt.run(strategy)
     
-    res.plot()
+    res.plot(logy=True)
     res.display()
     print(long,neutral,short)
 
@@ -601,8 +601,6 @@ def spread_holding_test(data_df):
     
     data_df['spread_z_ema'].dropna(inplace=True)
     
-    data_df['spread_z_ema'].plot()
-
     hp_months_cheap = 12
     hp_months_rich = 12
 
@@ -612,7 +610,7 @@ def spread_holding_test(data_df):
     
     signal = []
     
-    signal_abs_threshold_cheap= 2.0
+    signal_abs_threshold_cheap= 1.5
     signal_abs_threshold_rich= 1.5
     
   
@@ -674,10 +672,154 @@ def spread_holding_test(data_df):
 def ism_manufacturing_test(data_df):
     
     
-    pass
+    weights = pd.DataFrame(index=data_df.index)
+    
+    data_df['HY Spread 3m Avg Chng'] = pd.rolling_mean(data_df['ISM Manufacturing'], window=1)
+    data_df['HY Spread 12m Avg Chng'] = pd.rolling_mean(data_df['ISM Manufacturing'], window=12)
+    
+    data_df['diff'] = data_df['HY Spread 3m Avg Chng']  - data_df['HY Spread 12m Avg Chng'] 
+      
+    #weights['bond_wght'] = np.where(data_df['diff'] >= 0, 1.0, np.where(data_df['diff']< 0,-1.0, np.nan))
+    weights['bond_wght'] = np.where(data_df['ISM Manufacturing'] >= 50, 1.0, np.where(data_df['ISM Manufacturing']< 50,-1.0, np.nan))
+    weights['treasury_wght'] = weights['bond_wght'] * -1
+    bond_wght =  weights['bond_wght'].to_frame()
+    bond_wght.columns = ['US HY Return']
+    treasury_wght = weights['treasury_wght'].to_frame()
+    treasury_wght.columns = ['US Int. Trsy Return']
+
+    combined_wghts = pd.concat([bond_wght,treasury_wght], axis=1)
+
+    combined_wghts = combined_wghts.shift(1)
+    
+    combined_wghts.dropna(inplace=True)    
+
+    
+    weighted_returns = combined_wghts * data_df[['US HY Return','US Int. Trsy Return']]
+    
+    portfolio_return = weighted_returns.sum(axis=1).to_frame()
+    
+    portfolio_return =  portfolio_return.add(1).cumprod()
+
+    ism_man = long_only_ew(portfolio_return, name='ISM Manufacturing')
+
+    return ism_man, combined_wghts
+
+def return_reversal(data_df):
+ 
+    data_df[['HY Tot Index','US Trs Tot Index']] = data_df[['US HY Return','US Int. Trsy Return']].add(1).cumprod()
+    
+    data_df[['HY Rolling Return','Rolling Return']] = pd.DataFrame.pct_change(data_df[['HY Tot Index','US Trs Tot Index']],periods=36)
+
+    data_df['diff'] =  data_df['HY Rolling Return'] - data_df['Rolling Return']
+
+    data_df['Return Z'] = (data_df['diff']- pd.expanding_mean(data_df['diff'], min_periods=24))/  pd.expanding_std(data_df['diff'], min_periods=24)
+    
+    
+    data_df['Return Z'].dropna(inplace=True)
+    
+    data_df['Return Z'].plot()
+    
+    hp_months_cheap = 24
+    hp_months_rich = 24
+
+    counter = 0
+    
+    date_array = data_df.index.values
+    
+    signal = []
+    
+    signal_abs_threshold_cheap= 2
+    signal_abs_threshold_rich= 2
+    
+  
+    for date in range(0,len(date_array)):
+  
+        
+
+        if len(data_df['Return Z']) - 1 >= counter:
+            
+            score = data_df['Return Z'].ix[counter]
+
+            if score > signal_abs_threshold_cheap:
+                counter = counter+hp_months_cheap
+                temp_list = [-1] * hp_months_cheap
+                signal.extend(temp_list)
+                
+            elif score < (signal_abs_threshold_rich * -1):
+                counter = counter+hp_months_rich
+                temp_list = [1] * hp_months_rich 
+                signal.extend(temp_list)
+                
+            elif (score <= signal_abs_threshold_cheap) and score >= (signal_abs_threshold_rich * -1):
+                counter = counter + 1
+                signal.extend([0])
+   
+    
+    signal = signal[:len(date_array)] 
+    
+    print(signal)
+    
+    weights = pd.DataFrame(signal,index=data_df['Return Z'].index,columns=['US HY Return'])
 
 
+    weights['bond_wght'] = weights
+    
+       
+    weights['treasury_wght'] = weights['US HY Return'] * -1
 
+    bond_wght =  weights['bond_wght'].to_frame()
+    bond_wght.columns = ['US HY Return']
+    treasury_wght = weights['treasury_wght'].to_frame()
+    treasury_wght.columns = ['US Int. Trsy Return']
+    
+    
+    combined_wghts = pd.concat([bond_wght,treasury_wght], axis=1)
+    
+    combined_wghts = combined_wghts.shift(1)
+    
+    combined_wghts.dropna(inplace=True)    
+
+    weighted_returns = combined_wghts * data_df[['US HY Return','US Int. Trsy Return']]
+    
+    portfolio_return = weighted_returns.sum(axis=1).to_frame()
+    
+    portfolio_return =  portfolio_return.add(1).cumprod()
+
+    return_relative_test = long_only_ew(portfolio_return, name='Reversal')
+
+    return return_relative_test, combined_wghts
+
+
+def retail_sales_test(data_df):
+    
+    weights = pd.DataFrame(index=data_df.index)
+ 
+      
+    weights['bond_wght'] = np.where(data_df['Retail Sales'] >= 0, 1.0, np.where(data_df['Retail Sales']< 0,-1, np.nan))
+    
+    weights['treasury_wght'] = weights['bond_wght'] * -1
+    bond_wght =  weights['bond_wght'].to_frame()
+    bond_wght.columns = ['US HY Return']
+    treasury_wght = weights['treasury_wght'].to_frame()
+    treasury_wght.columns = ['US Int. Trsy Return']
+
+    combined_wghts = pd.concat([bond_wght,treasury_wght], axis=1)
+
+    combined_wghts = combined_wghts.shift(1)
+    
+    combined_wghts.dropna(inplace=True)    
+
+    
+    weighted_returns = combined_wghts * data_df[['US HY Return','US Int. Trsy Return']]
+    
+    portfolio_return = weighted_returns.sum(axis=1).to_frame()
+    
+    portfolio_return =  portfolio_return.add(1).cumprod()
+
+    retail_test = long_only_ew(portfolio_return, name='Retail Sales')
+
+    return retail_test, combined_wghts    
+    
 def main():
     
     
@@ -694,7 +836,8 @@ def main():
     #hy_val_score = spread_val_score(hy_spread)
     
     #hy_val_res = spread_val_backtest(hy_val_score,hy_return_series)
-     
+
+         
 
     hy_mm_test, hy_mm_wghts = credit_momentum_test(hy_monthly_returns)
 
@@ -704,13 +847,21 @@ def main():
 
     hy_sp_test, hy_sp_wghts = spread_holding_test(data_df[['US HY Return','US Int. Trsy Return','US HY Spread']])
     
-    #ism_test, ism_wghts = ism_manufacturing_test
+ 
+    #return_test, return_wghts = return_reversal(data_df[['US HY Return','US Int. Trsy Return']])
     
-    ratio = 1/4
-    hy_mm_wghts = hy_mm_wghts * ratio
-    hy_eq_mm_wghts = hy_eq_mm_wghts * ratio
-    hy_eq_vol_wghts = hy_eq_vol_wghts * ratio
-    hy_sp_wghts = hy_sp_wghts * ratio
+
+    behavioral_bucket = 0.75
+    #behavioral
+
+    hy_mm_wghts = hy_mm_wghts * behavioral_bucket *  1/3
+    hy_eq_mm_wghts = hy_eq_mm_wghts * behavioral_bucket *   1/3
+    hy_eq_vol_wghts = hy_eq_vol_wghts * behavioral_bucket *   1/3
+    #premia
+    premia_ratio = 0.25
+    hy_sp_wghts = hy_sp_wghts * premia_ratio
+ 
+   
     
     combined_wghts = hy_mm_wghts + hy_eq_mm_wghts + hy_eq_vol_wghts + hy_sp_wghts
     
@@ -726,13 +877,8 @@ def main():
     
     combined_portfolio =  combined_portfolio.add(1).cumprod()
 
-    combined_test = long_only_ew(combined_portfolio, name='Combined')   
-    res = bt.run(combined_test,hy_mm_test,hy_eq_mm_test,hy_eq_vol_test,hy_sp_test)
+    combined_test = long_only_ew(combined_portfolio, name='Combined')
 
-    rolling_return = rolling_change = pd.DataFrame.pct_change(res.prices,periods=12)
-    res.plot()
-    res.display()
-    
     temp_df = pd.DataFrame(np.where(combined_wghts>0,True,False),index=combined_wghts.index,columns=['High Yield Weight','Treasury Weight'])
     
     values_temp = temp_df['High Yield Weight'].values 
@@ -741,27 +887,28 @@ def main():
                                      values_temp[:-1] != values_temp[1:],
                                      [True])))[0])[::2]
 
-    print(np.mean(x),np.median(x))
-'''   
-    combined_data = res.prices[4:]
+    print(x, np.mean(x),np.median(x))
     
-    s = bt.Strategy('combined', [bt.algos.RunMonthly(),
-                       bt.algos.SelectAll(),
-                       bt.algos.WeighEqually(),
-                       bt.algos.Rebalance()])
-    # create and run
-    combined = bt.Backtest(s, combined_data)
-    res2 = bt.run(combined,hy_mm_test,hy_eq_mm_test,hy_eq_vol_test)    
+   
+    res = bt.run(combined_test,hy_mm_test,hy_eq_mm_test,hy_eq_vol_test,hy_sp_test)    
     
-    res2.plot()
-    res2.display()
+    res.plot()
+    res.display()
+    
+    correlation_df = pd.DataFrame(res.prices)
+    correlation_df = pd.DataFrame.pct_change(correlation_df,periods=1)
+    correlation_df.dropna(inplace=True)
+    
+    print(correlation_df.corr())
+
+main()
 '''  
     
     
     
     #spread_crossover(hy_df)
 
-''' 
+
     spread_dic = {1: [3,6,9,12,24,36], 3: [6,9,12,24,36], 6: [9,12,24,36], 9: [12,24,36], 12: [24,36]}
    
     spread_dic = {6: [12]}
@@ -827,7 +974,7 @@ def main():
     plt.show()
 '''
     
-main()
+
     
 
 
