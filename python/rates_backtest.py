@@ -100,7 +100,7 @@ def get_position_weights(data_df):
 
 
 
-    if (len(long_short_list_temp) - len(long_short_list)) == 0:
+    if (len(long_short_list_temp) - len(#new_ticker_list = ['AAPL US Equity','VZ US Equity','GOOG US Equity']long_short_list)) == 0:
         long_short_list = long_short_list[:]
     else:
         long_short_list = long_short_list[:len(long_short_list_temp) - len(long_short_list)]

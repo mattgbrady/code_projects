@@ -17,6 +17,7 @@ import numpy as np
 
 #host = 'dellt17003221.corp.wurts.com:4567'
 host = '192.168.67.134:4567'
+#host = '169.254.48.234'
 
 '''
 #Historical Data Example: Download daily OHLC for three currency pairs
@@ -256,6 +257,7 @@ def get_histData(tickers,fields,startTime,endTime,freq='DAILY',overrides=[]):
                 "overrides": overrides}
 
     res = histDataReq(host,histData)
+    print(res)
     df = parse_histDataReq(res)
     if not df.empty:
         df['date'] = pd.to_datetime(df['date'])

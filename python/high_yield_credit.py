@@ -756,9 +756,7 @@ def return_reversal(data_df):
    
     
     signal = signal[:len(date_array)] 
-    
-    print(signal)
-    
+
     weights = pd.DataFrame(signal,index=data_df['Return Z'].index,columns=['US HY Return'])
 
 
