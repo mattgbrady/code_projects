@@ -74,10 +74,13 @@ ticker_data = pd.DataFrame()
 for ticker in new_ticker_list:
     ticker_list = [ticker]
     monthly_returns_df = get_data(ticker_list)
-    ticker_data = ticker_data.append(monthly_returns_df, ignore_index=True)
     
+    ticker_data = ticker_data.append(monthly_returns_df, ignore_index=True)
+ '''   
 
-ticker_data.to_csv('spx_member_prices.csv')
+#ticker_data.to_csv('spx_member_prices.csv')
+spx_ticker_df = get_data(['SPXT INDEX'])
+spx_ticker_df.to_csv('spx_total_prices.cvs')
 '''
 ticker_data = pd.read_csv('spx_member_prices.csv', index_col=0)
 
@@ -96,14 +99,14 @@ monthly_returns_df = ticker_data.pct_change(periods=1)
 #convert to same type
 
 data_df.columns = pd.to_datetime(data_df.columns)
-number_of_stocks = 3
+number_of_stocks = 50
 
-runs = []
+
 portfolio_monthly_rt_df = pd.DataFrame()
 
-for counter in range(1,3):
+for runs in range(1,5):
     monthly_return = []
-    print(counter)
+    print(runs)
     for date in monthly_returns_df.index:
         loop_df = data_df[date]
 
@@ -140,8 +143,8 @@ for counter in range(1,3):
 
         monthly_return.append(loop_returns_df['weight_return'].sum())
         
-    temp_return_df = pd.DataFrame(monthly_return,index=monthly_returns_df.index,columns=['test '+str(counter)])
-    portfolio_monthly_rt_df.append(temp_return_df)
+    temp_return_df = pd.DataFrame(monthly_return,index=monthly_returns_df.index,columns=['test '+str(runs)])
+    portfolio_monthly_rt_df = pd.concat([portfolio_monthly_rt_df,temp_return_df],axis=1)
 print(portfolio_monthly_rt_df)
     #print(loop_returns_df.columns.values)
     #print(loop_returns_df.index.values)
@@ -151,6 +154,6 @@ print(portfolio_monthly_rt_df)
     #loop_returns_df.set_index(random_stock_list)
     
     #print(loop_returns_df)
-
+'''
 
 
