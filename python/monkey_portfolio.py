@@ -41,7 +41,7 @@ def get_data(ticker_list):
     
     
     return bl_data
-'''
+
 
 data = pd.read_excel('spx_index_members.xlsx', index_col=0)
 data_df = data.copy()
@@ -67,7 +67,7 @@ for word in unique_list:
 
 ticker_data = pd.DataFrame()
 
-
+'''
 #download data one time, aftewards import csv file
 
 for ticker in new_ticker_list:
@@ -82,6 +82,7 @@ ticker_data.to_csv('spx_member_prices.csv')
 spx_ticker_df = get_data(['SPXT INDEX'])
 spx_ticker_df.to_csv('spx_total_prices.cvs')
 '''
+
 ticker_data = pd.read_csv('spx_member_prices.csv', index_col=0)
 spx_ticker = pd.read_csv('spx_total_prices.cvs', index_col=0)
 spx_ticker = spx_ticker.pivot(index='date', columns='Ticker', values='PX_LAST')
@@ -101,14 +102,15 @@ monthly_returns_df = ticker_data.pct_change(periods=1)
 #convert to same type
 
 data_df.columns = pd.to_datetime(data_df.columns)
-number_of_stocks = 2
+number_of_stocks = 50
 
 
 portfolio_monthly_rt_df = pd.DataFrame()
 portfolio_random_mt_df = pd.DataFrame()
 
-for runs in range(0,2):
-    monthly_return = []
+for runs in range(0,3):
+    equal_weight_monthly_return = []
+    random_weight_monthly_return = []
     print(runs)
     for date in monthly_returns_df.index:
         random_weights = []
@@ -140,23 +142,26 @@ for runs in range(0,2):
         loop_returns_df = pd.DataFrame(loop_returns_df)
 
         loop_returns_df = loop_returns_df.ix[random_stock_list]
-        loop_returns_df['weights'] = 1/number_of_stocks
-        loop_returns_df['weight_return'] = loop_returns_df[date] * loop_returns_df['weights']
+        loop_returns_df['equal_weights'] = 1/number_of_stocks
+        loop_returns_df['equal_weight_return'] = loop_returns_df[date] * loop_returns_df['equal_weights']
 
-        monthly_return.append(loop_returns_df['weight_return'].sum())
+        equal_weight_monthly_return.append(loop_returns_df['equal_weight_return'].sum())
         
         for number in range(0,number_of_stocks):
             random_weights.append(random.uniform(0,100))
         sum_weights = sum(random_weights)
         random_weights = [x/sum_weights for x in random_weights]
+        
+        loop_returns_df['random_weights'] = random_weights
+        loop_returns_df['random_weight_return'] = loop_returns_df[date] * loop_returns_df['random_weights']
         random_returns = loop_returns_df[date].values
         new_array = random_weights * random_returns
         random_weight_return = sum(new_array)
     
-        print(random_returns)
+        random_weight_monthly_return.append(loop_returns_df['random_weight_return'].sum())
         
-    temp_return_df = pd.DataFrame(monthly_return,index=monthly_returns_df.index,columns=['test '+str(runs)])
-    temp_random_df = pd.DataFrame(random_weight_return,index=monthly_returns_df.index,columns=['test '+str(runs)])
+    temp_return_df = pd.DataFrame(equal_weight_monthly_return,index=monthly_returns_df.index,columns=['Run '+str(runs)])
+    temp_random_df = pd.DataFrame(random_weight_monthly_return,index=monthly_returns_df.index,columns=['Run '+str(runs)])
     portfolio_random_mt_df = pd.concat([portfolio_random_mt_df,temp_random_df],axis=1)
     portfolio_monthly_rt_df = pd.concat([portfolio_monthly_rt_df,temp_return_df],axis=1)
 
@@ -182,9 +187,20 @@ ax2.semilogy(spx_ticker)
 
 #portfolio_monthly_rt_df.append(spx_ticker)
 plt.show()
+
+ax = plt.subplot()
+ax1 = ax
+ax2 = ax
+ax1.semilogy(portfolio_monthly_rt_df,color='grey')
+
+ax2.semilogy(spx_ticker)
+
+#portfolio_monthly_rt_df.append(spx_ticker)
+plt.show()
 #spx_ticker.plot()
 '''
 random_50_equal_rebalance = pd.read_csv('random_50_equal_rebalance.csv', index_col=0)
+random_50_random_rebalance = pd.read_csv('random_50_random_weight_rebalance.csv', index_col=0)
 spx_total_return = pd.read_csv('spx_total_return.csv', index_col=0)
 
 median_tot_return = random_50_equal_rebalance.ix[max(random_50_equal_rebalance.index.values)].median()
@@ -213,5 +229,31 @@ monthly_diff['diff'] = combined['Median'].pct_change(periods=1) - combined['SPXT
 success_rate = len(monthly_diff[monthly_diff['diff'] > 0])
 
 
+print(success_rate/len(monthly_diff))
+
+median_tot_return = random_50_random_rebalance.ix[max(random_50_random_rebalance.index.values)].median()
+
+median_value =(abs(random_50_random_rebalance.ix[max(random_50_random_rebalance.index.values)] - median_tot_return)).to_frame()
+temp_df =  (random_50_random_rebalance.ix[max(random_50_random_rebalance.index.values)] + median_value)
+column_name = (median_value.sort(columns=[max(random_50_random_rebalance.index.values)])[:1].index.values[0])
+
+median_equity_curve = random_50_random_rebalance[column_name]
+#statistics of Median
+median = random_50_random_rebalance.pct_change(periods=1).median(axis=1).to_frame()
+median = median.add(1).cumprod()
+median.columns = ['Median']
+
+combined = pd.concat([median_equity_curve,spx_total_return],axis=1)
+combined = pd.concat([median,combined],axis=1)
+combined.plot(logy=True)
+
+
+monthly_diff = pd.DataFrame()
+
+monthly_diff['diff'] = combined['Median'].pct_change(periods=1) - combined['SPXT INDEX'].pct_change(periods=1)
+
+
+
+success_rate = len(monthly_diff[monthly_diff['diff'] > 0])
 print(success_rate/len(monthly_diff))
 '''
