@@ -94,16 +94,39 @@ ticker_data.index = pd.to_datetime(ticker_data.index)
 def spx_return(data_df):
     
     daily_return = data_df.pct_change(periods=1).to_frame()
+    daily_return.columns = ['daily return']
     weekly_return = data_df.pct_change(periods=5).to_frame()
+    weekly_return.columns = ['weekly return']
     monthly_return = data_df.pct_change(periods=22).to_frame()
+    monthly_return.columns = ['monthly return']
+    three_month_return = data_df.pct_change(periods=66).to_frame()
+    three_month_return.columns = ['three month return']
+    six_month_return = data_df.pct_change(periods=126).to_frame()
+    six_month_return.columns = ['six month return']
     
-    return daily_return, weekly_return , monthly_return
+    return daily_return, weekly_return , monthly_return, three_month_return, six_month_return
 
+def linear_line(data_df):
+    
+    print(data_df.iloc[:,[0,]])
+ 
+    line_df = np.polyfit(data_df.iloc[:,[0,]].values, data_df.iloc[:,[1,]], 1)
+    
+    #print(line_df)
+'''  
+    r_x, r_y = zip(*((i, i*line_df[0] + line_df[1]) for i in data_df.length))
+    line_df = pd.DataFrame({
+    'length' : r_x,
+    'weight' : r_y
+        })
+        
+    return line_df
+'''
 def retail_sales_test(data_df):
     
 
     release_date = data_df['Retail Sales Release'].dropna()
-    daily_return, weekly_return, monthly_return = spx_return(data_df['S&P 500 Price'])
+    daily_return, weekly_return, monthly_return, three_month_return, six_month_return = spx_return(data_df['S&P 500 Price'])
     weekly_return = weekly_return.shift(-5)
     monthly_return = monthly_return.shift(-22)
     release_date = release_date.map(lambda x: str(x)[:-2]).values
@@ -116,23 +139,54 @@ def retail_sales_test(data_df):
     
     diff_df.dropna(inplace=True)
 
-    daily_test = pd.concat([diff_df,daily_return],axis=1).dropna(axis=0)
+    daily_test = pd.concat([diff_df,daily_return,six_month_return],axis=1).dropna(axis=0)
     
-    daily_test.plot(kind='scatter', title='Retail Sales vs Daily Return',x='diff', y='S&P 500 Price')
+    daily_test_conditional_equity_up = daily_test[daily_test['six month return'] > 0]
+    daily_test_conditional_equity_up.drop(['six month return'],axis=1,inplace=True)
+    
+    daily_test_conditional_equity_down = daily_test[daily_test['six month return'] <= 0]
+    daily_test_conditional_equity_down.drop(['six month return'],axis=1,inplace=True)
+  
 
-    weekly_test = pd.concat([diff_df,weekly_return],axis=1).dropna(axis=0)
+    ax = daily_test_conditional_equity_up.plot(kind='scatter', x='diff', y='daily return', color='Red', label='Up Market')
     
-    weekly_test.plot(kind='scatter',title='Retail Sales vs Weekly Return',  x='diff', y='S&P 500 Price')
+    daily_test_conditional_equity_down.plot(kind='scatter', x='diff', y='daily return',color='Grey', label='Down Market', ax=ax)
     
-    monthly_test = pd.concat([diff_df,monthly_return],axis=1).dropna(axis=0)
     
-    monthly_test.plot(kind='scatter',title='Retail Sales vs Monthly Return', x='diff', y='S&P 500 Price')
+    weekly_test = pd.concat([diff_df,weekly_return,six_month_return],axis=1).dropna(axis=0)
+    
+    
+    
+    
+    
+    weekly_test_conditional_equity_up = weekly_test[weekly_test['six month return'] > 0]
+    weekly_test_conditional_equity_up.drop(['six month return'],axis=1,inplace=True)
+    
+    weekly_test_conditional_equity_down = weekly_test[weekly_test['six month return'] <= 0]
+    weekly_test_conditional_equity_down.drop(['six month return'],axis=1,inplace=True)
+    
+    ax = weekly_test_conditional_equity_up.plot(kind='scatter', x='diff', y='weekly return', color='Red', label='Up Market')
+    
+    weekly_test_conditional_equity_down.plot(kind='scatter', x='diff', y='weekly return',color='Grey', label='Down Market', ax=ax)
+        
 
+    monthly_test = pd.concat([diff_df,monthly_return,six_month_return],axis=1).dropna(axis=0)
+
+    monthly_test_conditional_equity_up = monthly_test[monthly_test['six month return'] > 0]
+    monthly_test_conditional_equity_up.drop(['six month return'],axis=1,inplace=True)
+    
+    monthly_test_conditional_equity_down = monthly_test[monthly_test['six month return'] <= 0]
+    monthly_test_conditional_equity_down.drop(['six month return'],axis=1,inplace=True)
+    
+    ax = monthly_test_conditional_equity_up.plot(kind='scatter', x='diff', y='monthly return', color='Red', label='Up Market')
+    
+    monthly_test_conditional_equity_down.plot(kind='scatter', x='diff', y='monthly return',color='Grey', label='Down Market', ax=ax)   
+ 
 def ism_manufacturing_test(data_df):
     
 
     release_date = data_df['ISM Manufacturing Release'].dropna()
-    daily_return, weekly_return, monthly_return = spx_return(data_df['S&P 500 Price'])
+    daily_return, weekly_return, monthly_return, three_month_return, six_month_return = spx_return(data_df['S&P 500 Price'])
     weekly_return = weekly_return.shift(-5)
     monthly_return = monthly_return.shift(-22)
     release_date = release_date.map(lambda x: str(x)[:-2]).values
@@ -145,23 +199,53 @@ def ism_manufacturing_test(data_df):
     
     diff_df.dropna(inplace=True)
 
-    daily_test = pd.concat([diff_df,daily_return],axis=1).dropna(axis=0)
+    daily_test = pd.concat([diff_df,daily_return,six_month_return],axis=1).dropna(axis=0)
     
-    daily_test.plot(kind='scatter',title='ISM Manufacturing vs Daily Return', x='diff', y='S&P 500 Price')
+    daily_test_conditional_equity_up = daily_test[daily_test['six month return'] > 0]
+    daily_test_conditional_equity_up.drop(['six month return'],axis=1,inplace=True)
+    
+    daily_test_conditional_equity_down = daily_test[daily_test['six month return'] <= 0]
+    daily_test_conditional_equity_down.drop(['six month return'],axis=1,inplace=True)
+    
+    ax = daily_test_conditional_equity_up.plot(kind='scatter', x='diff', y='daily return', color='Red', label='Up Market')
+    
+    daily_test_conditional_equity_down.plot(kind='scatter', x='diff', y='daily return',color='Grey', label='Down Market', ax=ax)
+    
+    
+    weekly_test = pd.concat([diff_df,weekly_return,six_month_return],axis=1).dropna(axis=0)
+    
+    
+    
+    
+    
+    weekly_test_conditional_equity_up = weekly_test[weekly_test['six month return'] > 0]
+    weekly_test_conditional_equity_up.drop(['six month return'],axis=1,inplace=True)
+    
+    weekly_test_conditional_equity_down = weekly_test[weekly_test['six month return'] <= 0]
+    weekly_test_conditional_equity_down.drop(['six month return'],axis=1,inplace=True)
+    
+    ax = weekly_test_conditional_equity_up.plot(kind='scatter', x='diff', y='weekly return', color='Red', label='Up Market')
+    
+    weekly_test_conditional_equity_down.plot(kind='scatter', x='diff', y='weekly return',color='Grey', label='Down Market', ax=ax)
+        
 
-    weekly_test = pd.concat([diff_df,weekly_return],axis=1).dropna(axis=0)
+    monthly_test = pd.concat([diff_df,monthly_return,six_month_return],axis=1).dropna(axis=0)
+
+    monthly_test_conditional_equity_up = monthly_test[monthly_test['six month return'] > 0]
+    monthly_test_conditional_equity_up.drop(['six month return'],axis=1,inplace=True)
     
-    weekly_test.plot(kind='scatter', title='ISM Manufacturing vs Weekly Return',x='diff', y='S&P 500 Price')
+    monthly_test_conditional_equity_down = monthly_test[monthly_test['six month return'] <= 0]
+    monthly_test_conditional_equity_down.drop(['six month return'],axis=1,inplace=True)
     
-    monthly_test = pd.concat([diff_df,monthly_return],axis=1).dropna(axis=0)
+    ax = monthly_test_conditional_equity_up.plot(kind='scatter', x='diff', y='monthly return', color='Red', label='Up Market')
     
-    monthly_test.plot(kind='scatter',title='ISM Manufacturing vs Monthly Return', x='diff', y='S&P 500 Price')
+    monthly_test_conditional_equity_down.plot(kind='scatter', x='diff', y='monthly return',color='Grey', label='Down Market', ax=ax)   
     
 def payroll_test(data_df):
     
 
     release_date = data_df['Payrolls Release'].dropna()
-    daily_return, weekly_return, monthly_return = spx_return(data_df['S&P 500 Price'])
+    daily_return, weekly_return, monthly_return, three_month_return, six_month_return = spx_return(data_df['S&P 500 Price'])
     weekly_return = weekly_return.shift(-5)
     monthly_return = monthly_return.shift(-22)
     release_date = release_date.map(lambda x: str(x)[:-2]).values
@@ -174,24 +258,156 @@ def payroll_test(data_df):
     
     diff_df.dropna(inplace=True)
 
-    daily_test = pd.concat([diff_df,daily_return],axis=1).dropna(axis=0)
+    daily_test = pd.concat([diff_df,daily_return,six_month_return],axis=1).dropna(axis=0)
     
-    daily_test.plot(kind='scatter',title='Payrolls vs Daily Return', x='diff', y='S&P 500 Price')
+    daily_test_conditional_equity_up = daily_test[daily_test['six month return'] > 0]
+    daily_test_conditional_equity_up.drop(['six month return'],axis=1,inplace=True)
+    
+    daily_test_conditional_equity_down = daily_test[daily_test['six month return'] <= 0]
+    daily_test_conditional_equity_down.drop(['six month return'],axis=1,inplace=True)
+    
+    ax = daily_test_conditional_equity_up.plot(kind='scatter', x='diff', y='daily return', color='Red', label='Up Market')
+    
+    daily_test_conditional_equity_down.plot(kind='scatter', x='diff', y='daily return',color='Grey', label='Down Market', ax=ax)
+    
+    
+    weekly_test = pd.concat([diff_df,weekly_return,six_month_return],axis=1).dropna(axis=0)   
+    
+    
+    weekly_test_conditional_equity_up = weekly_test[weekly_test['six month return'] > 0]
+    weekly_test_conditional_equity_up.drop(['six month return'],axis=1,inplace=True)
+    
+    weekly_test_conditional_equity_down = weekly_test[weekly_test['six month return'] <= 0]
+    weekly_test_conditional_equity_down.drop(['six month return'],axis=1,inplace=True)
+    
+    ax = weekly_test_conditional_equity_up.plot(kind='scatter', x='diff', y='weekly return', color='Red', label='Up Market')
+    
+    weekly_test_conditional_equity_down.plot(kind='scatter', x='diff', y='weekly return',color='Grey', label='Down Market', ax=ax)
+        
 
-    weekly_test = pd.concat([diff_df,weekly_return],axis=1).dropna(axis=0)
-    
-    weekly_test.plot(kind='scatter', title='Payrolls vs Weekly Return',x='diff', y='S&P 500 Price')
-    
-    monthly_test = pd.concat([diff_df,monthly_return],axis=1).dropna(axis=0)
-    
-    monthly_test.plot(kind='scatter',title='Payrolls vs Monthly Return', x='diff', y='S&P 500 Price')
-    
-    
-retail_sales_test_tickers = ['Retail Sales Exp MoM','Retail Sales MoM','Retail Sales Release','S&P 500 Price']
-retail_sales_return_df = retail_sales_test(ticker_data[retail_sales_test_tickers])
+    monthly_test = pd.concat([diff_df,monthly_return,six_month_return],axis=1).dropna(axis=0)
 
-ism_man_test_tickers = ['ISM Manufacturing Exp','ISM Manufacturing','ISM Manufacturing Release','S&P 500 Price']
-ism_man_return_df = ism_manufacturing_test(ticker_data[ism_man_test_tickers])
+    monthly_test_conditional_equity_up = monthly_test[monthly_test['six month return'] > 0]
+    monthly_test_conditional_equity_up.drop(['six month return'],axis=1,inplace=True)
+    
+    monthly_test_conditional_equity_down = monthly_test[monthly_test['six month return'] <= 0]
+    monthly_test_conditional_equity_down.drop(['six month return'],axis=1,inplace=True)
+    
+    ax = monthly_test_conditional_equity_up.plot(kind='scatter', x='diff', y='monthly return', color='Red', label='Up Market')
+    
+    monthly_test_conditional_equity_down.plot(kind='scatter', x='diff', y='monthly return',color='Grey', label='Down Market', ax=ax)   
 
-payrolls_test_tickers = ['Payrolls Exp','Payrolls','Payrolls Release','S&P 500 Price']
-payrolls_return_df = payroll_test(ticker_data[payrolls_test_tickers])
+
+def citi_surprise_test(data_df):
+    
+    data_df = data_df.reindex(pd.date_range(data_df.index[0],data_df.index[-1],freq='m'),method='ffill')
+    equity_monthly_rtn = data_df['S&P 500 Price'].pct_change(periods=1).to_frame().dropna()
+    absolute_monthly_test = pd.concat([data_df['Citi Suprise'],equity_monthly_rtn],axis=1).dropna(axis=0)
+    absolute_monthly_test.columns = ['Citi Suprise','S&P 500 Monthly Return']
+    citi_above_zero_test = absolute_monthly_test[absolute_monthly_test['Citi Suprise'] > 0]
+    
+    citi_below_zero_test = absolute_monthly_test[absolute_monthly_test['Citi Suprise'] <= 0]
+  
+    
+    ax = citi_above_zero_test.plot(kind='scatter', x='Citi Suprise', y='S&P 500 Monthly Return', color='Red', label='Citi Surprise > 0')
+
+    citi_below_zero_test.plot(kind='scatter', x='Citi Suprise', y='S&P 500 Monthly Return',color='Grey', label='Citi Surprise <= 0', ax=ax)   
+
+
+    citi_three_month_average = pd.rolling_mean(data_df['Citi Suprise'],window=3)
+    citi_six_month_average = pd.rolling_mean(data_df['Citi Suprise'],window=12)
+    citi_trend = pd.DataFrame(citi_three_month_average - citi_six_month_average,index=citi_six_month_average.index)
+    
+    citi_trend_test = pd.concat([citi_trend,equity_monthly_rtn],axis=1).dropna(axis=0)
+    citi_trend_test.columns = ['Citi Suprise','S&P 500 Monthly Return']
+    
+    
+    
+    citi_up_trend_test = citi_trend_test[citi_trend_test['Citi Suprise'] > 0]
+    
+    citi_down_trend_test = citi_trend_test[citi_trend_test['Citi Suprise'] <= 0]
+  
+    
+    ax = citi_up_trend_test.plot(kind='scatter', x='Citi Suprise', y='S&P 500 Monthly Return', color='Red', label='Citi Surprise Up Trend')
+
+    citi_down_trend_test.plot(kind='scatter', x='Citi Suprise', y='S&P 500 Monthly Return',color='Grey', label='Citi Surprise Down Trend', ax=ax)   
+
+    
+    
+    
+    
+    #citi_trend_up_test = absolute_monthly_test[absolute_monthly_test['Citi Suprise'] > 0]
+    
+    #citi_trend_down_test = absolute_monthly_test[absolute_monthly_test['Citi Suprise'] <= 0]
+
+
+'''
+    release_date = data_df['Payrolls Release'].dropna()
+    daily_return, weekly_return, monthly_return, three_month_return, six_month_return = spx_return(data_df['S&P 500 Price'])
+    weekly_return = weekly_return.shift(-5)
+    monthly_return = monthly_return.shift(-22)
+    release_date = release_date.map(lambda x: str(x)[:-2]).values
+    release_date = set(pd.to_datetime(release_date).tolist())
+    
+    diff_df = (data_df['Payrolls Exp'] - data_df['Payrolls']).dropna().to_frame()
+    diff_df.columns = ['diff']
+
+    diff_df = diff_df.reindex(release_date)
+    
+    diff_df.dropna(inplace=True)
+
+    daily_test = pd.concat([diff_df,daily_return,six_month_return],axis=1).dropna(axis=0)
+    
+    daily_test_conditional_equity_up = daily_test[daily_test['six month return'] > 0]
+    daily_test_conditional_equity_up.drop(['six month return'],axis=1,inplace=True)
+    
+    daily_test_conditional_equity_down = daily_test[daily_test['six month return'] <= 0]
+    daily_test_conditional_equity_down.drop(['six month return'],axis=1,inplace=True)
+    
+    ax = daily_test_conditional_equity_up.plot(kind='scatter', x='diff', y='daily return', color='Red', label='Up Market')
+    
+    daily_test_conditional_equity_down.plot(kind='scatter', x='diff', y='daily return',color='Grey', label='Down Market', ax=ax)
+    
+    
+    weekly_test = pd.concat([diff_df,weekly_return,six_month_return],axis=1).dropna(axis=0)   
+    
+    
+    weekly_test_conditional_equity_up = weekly_test[weekly_test['six month return'] > 0]
+    weekly_test_conditional_equity_up.drop(['six month return'],axis=1,inplace=True)
+    
+    weekly_test_conditional_equity_down = weekly_test[weekly_test['six month return'] <= 0]
+    weekly_test_conditional_equity_down.drop(['six month return'],axis=1,inplace=True)
+    
+    ax = weekly_test_conditional_equity_up.plot(kind='scatter', x='diff', y='weekly return', color='Red', label='Up Market')
+    
+    weekly_test_conditional_equity_down.plot(kind='scatter', x='diff', y='weekly return',color='Grey', label='Down Market', ax=ax)
+        
+
+    monthly_test = pd.concat([diff_df,monthly_return,six_month_return],axis=1).dropna(axis=0)
+
+    monthly_test_conditional_equity_up = monthly_test[monthly_test['six month return'] > 0]
+    monthly_test_conditional_equity_up.drop(['six month return'],axis=1,inplace=True)
+    
+    monthly_test_conditional_equity_down = monthly_test[monthly_test['six month return'] <= 0]
+    monthly_test_conditional_equity_down.drop(['six month return'],axis=1,inplace=True)
+    
+    ax = monthly_test_conditional_equity_up.plot(kind='scatter', x='diff', y='monthly return', color='Red', label='Up Market')
+    
+    monthly_test_conditional_equity_down.plot(kind='scatter', x='diff', y=
+'''
+
+
+   
+    
+#retail_sales_testtickers = ['Retail Sales Exp MoM','Retail Sales MoM','Retail Sales Release','S&P 500 Price']
+#retail_sales_return_df = retail_sales_test(ticker_data[retail_sales_test_tickers])
+
+#ism_man_test_tickers = ['ISM Manufacturing Exp','ISM Manufacturing','ISM Manufacturing Release','S&P 500 Price']
+#ism_man_return_df = ism_manufacturing_test(ticker_data[ism_man_test_tickers])
+
+#payrolls_test_tickers = ['Payrolls Exp','Payrolls','Payrolls Release','S&P 500 Price']
+#payrolls_return_df = payroll_test(ticker_data[payrolls_test_tickers])
+
+
+citi_surprise_tickers = ['Citi Suprise','S&P 500 Price']
+citi_surprise_return_df = citi_surprise_test(ticker_data[citi_surprise_tickers])
