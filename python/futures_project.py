@@ -12,6 +12,6 @@ quandl.ApiConfig.api_key = 'YMqrB1SXyjSUkTHYwpJ2'
 #y = quandl.bulkdownload("SCF",download_type="complete",filename='../futures.zip')
 
 
-data = pd.read_csv('SCF_20160819.csv', index_col=0)
+merged_data = quandl.get(['SCF/CME_CL1_OB','SCF/CME_CL2_OB'])
 
-print(data)
+print(merged_data)

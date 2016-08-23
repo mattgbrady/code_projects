@@ -20,7 +20,7 @@ quandl.ApiConfig.api_key = 'YMqrB1SXyjSUkTHYwpJ2'
 
 
 
-'''
+
 ticker_list = ['SCF/CME_CL1_FW','SCF/CME_CL1_FR','SCF/CME_CL1_FB']
 
 merged_data = quandl.get(ticker_list)
@@ -30,8 +30,13 @@ merged_data = quandl.get(ticker_list)
 raw_data = merged_data[['SCF/CME_CL1_FW - Settle','SCF/CME_CL1_FR - Settle','SCF/CME_CL1_FB - Settle']]
 
 raw_data.to_csv('raw_data.csv')
-'''
+
+
+
 data_df = pd.read_csv('raw_data.csv',index_col=0)
+
+
+data_df_rolling_one = data_df.pct_change(periods=252) * 50
 
 data_df_shift = data_df.shift(252)
 
@@ -42,19 +47,24 @@ data_df_diff.dropna(inplace=True)
 
 data_format = [
     go.Scatter(
-        x=data_df_diff.index, # assign x as the dataframe column 'x'
-        y=data_df_diff['SCF/CME_CL1_FW - Settle'],
-        name='Calendar Weighted'
+        x=data_df_rolling_one.index, # assign x as the dataframe column 'x'
+        y=data_df_rolling_one['SCF/CME_CL1_FR - Settle'],
+        name='Backwards Ratio 1 yr Rtn'
     ),
     go.Scatter(
         x=data_df_diff.index, # assign x as the dataframe column 'x'
         y=data_df_diff['SCF/CME_CL1_FR - Settle'],
-        name='Backwards Ratio'
+        name='Backwards Ratio 1 yr price'
     ),
     go.Scatter(
-        x=data_df_diff.index, # assign x as the dataframe column 'x'
-        y=data_df_diff['SCF/CME_CL1_FB - Settle'],
-        name='Backwards Panama'
+        x=data_df_rolling_one.index, # assign x as the dataframe column 'x'
+        y=data_df_rolling_one['SCF/CME_CL1_FB - Settle'],
+        name='Backwards Panama 1 yr Rtn'
+    ),
+    go.Scatter(
+    x=data_df_diff.index, # assign x as the dataframe column 'x'
+    y=data_df_diff['SCF/CME_CL1_FB - Settle'],
+       name='Backwards Panama 1 yr price'
     ),
 
 ]
