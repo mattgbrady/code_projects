@@ -20,41 +20,43 @@ quandl.ApiConfig.api_key = 'YMqrB1SXyjSUkTHYwpJ2'
 
 
 
-
-ticker_list = ['SCF/CME_CL1_OB','SCF/CME_CL1_EB','SCF/CME_CL1_FB','SCF/CME_CL1_FW']
+'''
+ticker_list = ['SCF/CME_CL1_FW','SCF/CME_CL1_FR','SCF/CME_CL1_FB']
 
 merged_data = quandl.get(ticker_list)
 
-raw_data = merged_data[['SCF/CME_CL1_OB - Settle', 'SCF/CME_CL1_EB - Settle','SCF/CME_CL1_FB - Settle','SCF/CME_CL1_FW - Settle']]
+
+
+raw_data = merged_data[['SCF/CME_CL1_FW - Settle','SCF/CME_CL1_FR - Settle','SCF/CME_CL1_FB - Settle']]
 
 raw_data.to_csv('raw_data.csv')
-
+'''
 data_df = pd.read_csv('raw_data.csv',index_col=0)
 
+data_df_shift = data_df.shift(252)
+
+data_df_diff = data_df - data_df_shift
+data_df_diff.dropna(inplace=True)
 
 
 
 data_format = [
     go.Scatter(
-        x=data_df.index, # assign x as the dataframe column 'x'
-        y=data_df['SCF/CME_CL1_OB - Settle'],
-        name='Backwards Panama: Open Switch'
+        x=data_df_diff.index, # assign x as the dataframe column 'x'
+        y=data_df_diff['SCF/CME_CL1_FW - Settle'],
+        name='Calendar Weighted'
     ),
     go.Scatter(
-        x=data_df.index, # assign x as the dataframe column 'x'
-        y=data_df['SCF/CME_CL1_EB - Settle'],
-        name='Backwards Panama: Last Trading Day'
+        x=data_df_diff.index, # assign x as the dataframe column 'x'
+        y=data_df_diff['SCF/CME_CL1_FR - Settle'],
+        name='Backwards Ratio'
     ),
     go.Scatter(
-        x=data_df.index, # assign x as the dataframe column 'x'
-        y=data_df['SCF/CME_CL1_FB - Settle'],
-        name='Backwards Panama: First of the Month'
+        x=data_df_diff.index, # assign x as the dataframe column 'x'
+        y=data_df_diff['SCF/CME_CL1_FB - Settle'],
+        name='Backwards Panama'
     ),
-    go.Scatter(
-        x=data_df.index, # assign x as the dataframe column 'x'
-        y=data_df['SCF/CME_CL1_FW - Settle'],
-        name='Calendar Weighted: First of the Month'
-    ),
+
 ]
 
 
@@ -64,6 +66,7 @@ layout = dict(
     xaxis=dict(
         rangeselector=dict(
             buttons=list([
+                dict(step='all'),
                 dict(count=6,
                      label='6m',
                      step='month',
@@ -79,8 +82,7 @@ layout = dict(
                 dict(count=10,
                     label='10yr',
                     step='year',
-                    stepmode='backward'),
-                dict(step='all')
+                    stepmode='backward')
             ])
         ),
         rangeslider=dict(),
@@ -90,6 +92,28 @@ layout = dict(
 
 fig = dict(data=data_format, layout=layout)
 py.iplot(fig, filename='Crude', validate=False, layout=layout)
+
+
+
+data_format = [
+    go.Scatter(
+        x=data_df.index, # assign x as the dataframe column 'x'
+        y=data_df['SCF/CME_CL1_FW - Settle'],
+        name='Calendar Weighted'
+    ),
+    go.Scatter(
+        x=data_df.index, # assign x as the dataframe column 'x'
+        y=data_df['SCF/CME_CL1_FR - Settle'],
+        name='Backwards Ratio'
+    ),
+    go.Scatter(
+        x=data_df.index, # assign x as the dataframe column 'x'
+        y=data_df['SCF/CME_CL1_FB - Settle'],
+        name='Backwards Panama'
+    )]
+fig = dict(data=data_format, layout=layout)
+py.iplot(fig, filename='Crude Price', validate=False, layout=layout)
+
 '''
 table_df = pd.DataFrame()
 
