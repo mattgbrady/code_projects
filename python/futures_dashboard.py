@@ -33,8 +33,8 @@ def beta(data, name='Strategy'):
                            bt.algos.Rebalance()])
     
     return bt.Backtest(s, data)    
-
 '''
+quandl.ApiConfig.api_key = 'YMqrB1SXyjSUkTHYwpJ2'
 ticker_list = ['SCF/CME_CL1_FR']
 
 merged_data = quandl.get(ticker_list)
@@ -48,22 +48,42 @@ data_df.index = pd.to_datetime(data_df.index)
 
 data_df = data_df.reindex(pd.date_range(data_df.index[0],data_df.index[-1],freq='B'),method='ffill')
 
-data_df['shift'] = data_df['SCF/CME_CL1_FR - Settle'].shift(252)
+data_df['shift'] = data_df['SCF/CME_CL1_FR - Settle'].shift(90)
 
 signal_bool = (data_df['SCF/CME_CL1_FR - Settle']>= data_df['shift']).to_frame()
-    
+ 
 signal_bool = signal_bool.shift(1)
     
+data_df.plot()
+ 
 signal_bool.dropna(inplace=True)
+
+asset_return_df = data_df['SCF/CME_CL1_FR - Settle'].pct_change(periods=1).dropna().to_frame()
+asset_return_df.columns = ['Crude']
 
 ls_weights_df = pd.DataFrame(np.where(signal_bool == True,1,-1), index=signal_bool.index)
 ls_weights_df.columns = ['Crude']
 
-long_weights_df = pd.DataFrame(np.where(ls_weights_df == 1,1,np.nan), index=ls_weights_df.index)
+ls_weights_df.plot()
+
+long_short_portfolio = asset_return_df * ls_weights_df
+
+long_short_portfolio =  long_short_portfolio.add(1).cumprod()
+
+long_short_portfolio_results = beta(long_short_portfolio, name='Crude Long/Short')
+
+res = bt.run(long_short_portfolio_results)    
+
+res.plot()
+
+res.display()
+
+'''
+long_weights_df = pd.DataFrame(np.where(ls_weights_df == 1,1,0), index=ls_weights_df.index)
 long_weights_df.dropna(inplace=True)
 long_weights_df.columns = ['Crude Long']
 
-short_weights_df = pd.DataFrame(np.where(ls_weights_df == -1,-1,np.nan), index=ls_weights_df.index)
+short_weights_df = pd.DataFrame(np.where(ls_weights_df == -1,-1,0), index=ls_weights_df.index)
 short_weights_df.dropna(inplace=True)
 short_weights_df.columns = ['Crude Short']
 
@@ -97,7 +117,7 @@ three_portfolios.fillna(value=0,inplace=True)
 long_short_portfolio = beta(three_portfolios['Crude Long/Short'], name='Crude Long/Short')
 long_portfolio = beta(three_portfolios['Crude Long Only'], name='Crude Long')
 short_portfolio = beta(three_portfolios['Crude Short Only'], name='Crude Short')
-
+'''
 #print(long_short_portfolio)
 #res = bt.run(long_short_portfolio)    
     
