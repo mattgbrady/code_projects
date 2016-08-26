@@ -1,0 +1,79 @@
+database,exchange,symbol,number,method,name,short_name,number_of_contracts,include
+SCF,CME,CL,1,FR,NYMEX WTI Crude Oil,WTI,9,TRUE
+SCF,CME,LN,1,FR,CME Lean Hogs,Hogs,2,TRUE
+SCF,CME,W,1,FR,CBOT Wheat,Wheat,4,TRUE
+SCF,CME,NK,1,FR,CME Nikkei 225,Nikkei,2,TRUE
+SCF,CME,S,1,FR,CBOT Soybeans,Soybeans,6,TRUE
+SCF,CME,ES,1,FR,CME S&P 500 Index E-Mini,S&P 500 Mini,1,TRUE
+SCF,CME,MD,1,FR,CME S&P 400 Midcap Index,S&P 400 ,2,
+SCF,CME,AD,1,FR,CME Australian Dollar AUD,AUD,1,TRUE
+SCF,CME,BO,1,FR,CBOT Soybean Oil,Soybean Oil,2,TRUE
+SCF,ICE,B,1,FR,ICE Brent Crude Oil,Brent,12,
+SCF,CME,SI,1,FR,NYMEX Silver,Silver,1,TRUE
+SCF,CME,GC,1,FR,NYMEX Gold,Gold,2,TRUE
+SCF,CME,PA,1,FR,NYMEX Palladium,Palladium,1,TRUE
+SCF,CME,HO,1,FR,NYMEX Heating Oil,NYMEX Heating Oil,2,TRUE
+SCF,CME,SF,1,FR,CME Swiss Franc CHF,CHF,1,
+SCF,CME,PL,1,FR,NYMEX Platinum,Platinum,1,TRUE
+SCF,CME,C,1,FR,CBOT Corn,Corn,4,TRUE
+SCF,CME,SM,1,FR,CBOT Soybean Meal,Soybean Meal,2,TRUE
+SCF,CME,FV,1,FR,CBOT 5-year US Treasury Note,5yr US Treasury,1,TRUE
+SCF,CME,NG,1,FR,NYMEX Natural Gas,Natural Gas,9,TRUE
+SCF,ICE,ATW,1,FR,ICE Rotterdam Coal,Coal,2,
+SCF,ICE,RF,1,FR,ICE Russell 1000 Index Mini,Russell 1000,2,
+SCF,CME,DJ,1,FR,CBOT Dow Jones Ind Avg (DJIA),DJIA,2,
+SCF,CME,TY,1,FR,CBOT 10-year US Treasury Note,10yr US Treasury,1,TRUE
+SCF,ICE,KC,1,FR,ICE Coffee C,Coffee,2,TRUE
+SCF,CME,BP,1,FR,CME British Pound GBP,CME GBP,2,TRUE
+SCF,CME,JY,1,FR,CME Japanese Yen JPY,JPY,2,TRUE
+SCF,CME,CD,1,FR,CME Canadian Dollar CAD,CAD,2,TRUE
+SCF,ICE,DX,1,FR,ICE US Dollar Index,USD,2,TRUE
+SCF,CME,ED,1,FR,CME Eurodollar,Eurodollar,9,TRUE
+SCF,ICE,M,1,FR,ICE UK Natural Gas,,2,
+SCF,CME,SP,1,FR,CME S&P 500 Index,,2,
+SCF,ICE,T,1,FR,ICE WTI Crude Oil,,2,
+SCF,CME,EC,1,FR,CME Euro FX,Euro,2,TRUE
+SCF,ICE,CT,1,FR,ICE Cotton,Cotton,2,TRUE
+SCF,ICE,G,1,FR,ICE Gasoil,Gas Oil,2,TRUE
+SCF,ICE,CC,1,FR,ICE Cocoa,Cocoa,1,TRUE
+SCF,ICE,OJ,1,FR,ICE Orange Juice,Orange,2,TRUE
+SCF,CME,LC,1,FR,CME Live Cattle,Live Cattle,2,TRUE
+SCF,CME,RB,1,FR,NYMEX Gasoline,Gasoline,2,TRUE
+SCF,CME,KW,1,FR,CME Kansas City Wheat,KC Wheat,2,TRUE
+SCF,ICE,TF,1,FR,ICE Russell 2000 Index Mini,Russell 2000 Mini,2,
+SCF,SHFE,ZN,1,FR,SHFE Zinc,Zinc,2,
+SCF,ICE,MP,1,FR,ICE British Pound GBP,ICE GBP,2,TRUE
+SCF,CME,NE,1,FR,CME New Zealand Dollar NZD,NZD,1,TRUE
+SCF,CME,NQ,1,FR,CME NASDAQ 100 Index Mini,Nasdaq 100 Mini,1,TRUE
+SCF,ICE,O,1,FR,ICE Heating Oil,ICE Heating Oil,2,
+SCF,SHFE,AL,1,FR,SHFE Aluminium,Aluminum,2,
+SCF,CBOE,VX,1,FR,CBOE VIX Futures,VIX,2,TRUE
+SCF,EUREX,FGBM,1,FR,EUREX Euro-Bobl,Euro_Bobl,2,TRUE
+SCF,CME,US,1,FR,CBOT 30-year US Treasury Bond,30yr US Treasury,2,TRUE
+SCF,LIFFE,I,1,FR,LIFFE EURIBOR,Euribor,2,
+SCF,SHFE,PB,1,FR,SHFE Lead,Lead,2,
+SCF,LIFFE,C,1,FR,LIFFE London Cocoa,London Cocoa,2,TRUE
+SCF,CME,O,1,FR,CBOT Oats,Oats,2,TRUE
+SCF,CME,RR,1,FR,CBOT Rough Rice,Rice,2,TRUE
+SCF,MX,SXF,1,FR,MX Montreal S&P/TSX 60 Index,TSX 60,2,
+SCF,CME,LB,1,FR,CME Random Length Lumber,Lumber,2,TRUE
+SCF,CME,FF,1,FR,CBOT 30-day Federal Funds,Fed Funds,2,
+SCF,CME,HG,1,FR,COMEX Copper,Copper,2,TRUE
+SCF,ICE,SB,1,FR,ICE Sugar No. 11,Sugar,2,TRUE
+SCF,CME,TU,1,FR,CBOT 2-year US Treasury Note,2yr US Treasury,1,TRUE
+SCF,SHFE,RB,1,FR,SHFE Rebar,Rebar,2,
+SCF,MGEX,MW,1,FR,MGEX Hard Red Spring Wheat,Spring Wheat,2,TRUE
+SCF,SHFE,RU,1,FR,SHFE Natural Rubber,Rubber,2,TRUE
+SCF,EUREX,FGBL,1,FR,EUREX Euro-Bund,Euro-Bund,2,TRUE
+SCF,EUREX,FDAX,1,FR,EUREX DAX,DAX,2,TRUE
+SCF,LIFFE,L,1,FR,LIFFE Short Sterling,Short Sterling,2,TRUE
+SCF,SHFE,CU,1,FR,SHFE Copper,SHFE Coppper,2,
+SCF,EUREX,FESX,1,FR,EUREX EURO STOXX 50 Index,Euro STOXX,2,TRUE
+SCF,EUREX,FBTP,1,FR,EUREX Euro-BTP,Euro-BTP,2,TRUE
+SCF,CME,MP,1,FR,CME Mexican Peso,Peso,2,
+SCF,LIFFE,Z,1,FR,LIFFE FTSE 100 Index,FTSE 100,2,TRUE
+SCF,CME,DA,1,FR,CME Class III Milk,Milk,2,TRUE
+SCF,CME,YM,1,FR,CME E-mini Dow Jones,DJIA Mini,2,
+SCF,EUREX,FOAT,1,FR,EUREX Euro-OAT,Euro-OAT,2,TRUE
+SCF,EUREX,FGBS,1,FR,EUREX Euro-Schatz,Euro-Schatz,2,TRUE
+SCF,LIFFE,R,1,FR,LIFFE Long Gilt,Long Gilt,2,TRUE

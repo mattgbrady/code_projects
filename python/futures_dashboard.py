@@ -17,6 +17,12 @@ import bt as bt
 import pandas.io.data as web
 
 
+class futures():
+    
+    def __init__(self):
+        
+        self.name = 'hi'
+        
 def get_data(ticker_list):
     
     dt_start = pd.datetime(1992,12,1)
@@ -32,31 +38,108 @@ def beta(data, name='Strategy'):
                            bt.algos.WeighEqually(),
                            bt.algos.Rebalance()])
     
-    return bt.Backtest(s, data)    
-'''
-quandl.ApiConfig.api_key = 'YMqrB1SXyjSUkTHYwpJ2'
-ticker_list = ['SCF/CME_CL1_FR']
+    return bt.Backtest(s, data)   
 
-merged_data = quandl.get(ticker_list)
+def download_data():
+    
+    futures_tickers = pd.read_csv('futures_tickers.csv')
+    futures_tickers['number'] = futures_tickers['number'].to_string()
+    tickers_download = futures_tickers['database'] + '/' + futures_tickers['exchange'] + '_' + futures_tickers['symbol'] + str(1) + '_' + futures_tickers['method'] 
 
-raw_data = merged_data[['SCF/CME_CL1_FR - Settle']]
+    tickers_download = tickers_download.tolist()
 
-raw_data.to_csv('raw_data.csv')
+    quandl.ApiConfig.api_key = 'YMqrB1SXyjSUkTHYwpJ2'
+
+    merged_data = quandl.get(tickers_download)
+    
+    merged_data.to_csv('quandl_data.csv')
+
+def get_data_csv():
+    
+    raw_data = pd.read_csv('quandl_data.csv',index_col=0)
+    
+
+    
+    tickers = raw_data.columns.tolist()
+
+    tickers = [x for x in tickers if "- Settle" in x]
+    
+    raw_data = raw_data[tickers]
+    
+   
+    tickers_included = pd.read_csv('futures_tickers.csv')
+    tickers_included = tickers_included[tickers_included['include'] == True]
+    tickers_included['long_ticker_name'] = tickers_included['database'] + '/' + tickers_included['exchange'] + '_' + tickers_included['symbol'] + str(1) + '_' + tickers_included['method']  + ' - Settle'
+    
+
+    raw_data = raw_data[tickers_included['long_ticker_name'].tolist()]
+    
+    return raw_data
+
+def main():
+    
+    raw_data = get_data_csv()
+    
+    for ticker in raw_data.columns.tolist():
+        print(ticker)
+
+
+main()
+
+
 '''
 data_df = pd.read_csv('raw_data.csv',index_col=0)
 data_df.index = pd.to_datetime(data_df.index)
 
 data_df = data_df.reindex(pd.date_range(data_df.index[0],data_df.index[-1],freq='B'),method='ffill')
+data_df_monthly = data_df.reindex(pd.date_range(data_df.index[0],data_df.index[-1],freq='M'),method='ffill')
+print(data_df)
+st = '19830331'
+en = '20160731'
 
-data_df['shift'] = data_df['SCF/CME_CL1_FR - Settle'].shift(90)
-
+data_df['shift'] = data_df['SCF/CME_CL1_FR - Settle'].shift(252)
+data_df_monthly['shift'] = data_df_monthly['SCF/CME_CL1_FR - Settle'].shift(12)
 signal_bool = (data_df['SCF/CME_CL1_FR - Settle']>= data_df['shift']).to_frame()
  
 signal_bool = signal_bool.shift(1)
     
-data_df.plot()
+
  
 signal_bool.dropna(inplace=True)
+
+signal_bool = signal_bool[st:en]
+
+signal_bool_m = (data_df_monthly['SCF/CME_CL1_FR - Settle']>= data_df_monthly['shift']).to_frame()
+ 
+signal_bool_m = signal_bool_m.shift(1)
+    
+
+ 
+signal_bool_m.dropna(inplace=True)
+
+
+asset_monthly_price= data_df['SCF/CME_CL1_FR - Settle'].reindex(pd.date_range(data_df['SCF/CME_CL1_FR - Settle'].index[0],data_df['SCF/CME_CL1_FR - Settle'].index[-1],freq='M'),method='ffill')
+
+
+
+asset_return_df_1m = asset_monthly_price.pct_change(periods=1).dropna().to_frame()
+asset_return_df_1m.columns = ['Crude']
+
+asset_return_df_12m = asset_monthly_price.pct_change(periods=12).dropna().to_frame()
+asset_return_df_12m.columns = ['Crude']
+
+signal_bool_m = (asset_return_df_12m['Crude']>=0).to_frame()
+ 
+signal_bool_m = signal_bool_m.shift(1)
+    
+
+ 
+signal_bool_m.dropna(inplace=True)
+signal_bool_m = signal_bool_m[st:en]
+
+ls_weights_df_m = pd.DataFrame(np.where(signal_bool_m == True,1,-1), index=signal_bool_m.index)
+ls_weights_df_m.columns = ['Crude']
+print(ls_weights_df_m)
 
 asset_return_df = data_df['SCF/CME_CL1_FR - Settle'].pct_change(periods=1).dropna().to_frame()
 asset_return_df.columns = ['Crude']
@@ -64,21 +147,33 @@ asset_return_df.columns = ['Crude']
 ls_weights_df = pd.DataFrame(np.where(signal_bool == True,1,-1), index=signal_bool.index)
 ls_weights_df.columns = ['Crude']
 
-ls_weights_df.plot()
+long_short_portfolio_m = asset_return_df_1m[st:en] * ls_weights_df_m
 
-long_short_portfolio = asset_return_df * ls_weights_df
+print(asset_return_df_1m[st:en] )
+long_short_portfolio_m =  long_short_portfolio_m.add(1).cumprod()
+long_short_portfolio_m.dropna(inplace=True)
+
+
+long_short_portfolio = asset_return_df[st:en] * ls_weights_df
+
+
 
 long_short_portfolio =  long_short_portfolio.add(1).cumprod()
 
-long_short_portfolio_results = beta(long_short_portfolio, name='Crude Long/Short')
 
-res = bt.run(long_short_portfolio_results)    
+long_short_portfolio = long_short_portfolio[st:en]
+long_short_portfolio_m = long_short_portfolio_m[st:en]
+
+
+long_short_portfolio_results = beta(long_short_portfolio, name='Crude Long/Short 252 Days')
+long_short_portfolio_results_m = beta(long_short_portfolio_m, name='Crude Long/Short 12M')
+
+res = bt.run(long_short_portfolio_results,long_short_portfolio_results_m)    
 
 res.plot()
 
 res.display()
 
-'''
 long_weights_df = pd.DataFrame(np.where(ls_weights_df == 1,1,0), index=ls_weights_df.index)
 long_weights_df.dropna(inplace=True)
 long_weights_df.columns = ['Crude Long']
