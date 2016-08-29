@@ -7,15 +7,18 @@ Created on Thu Aug 18 17:23:22 2016
 import bbgREST as bbg
 import pandas as pd
 import quandl
+import time
 import plotly.plotly as py
+import plotly.tools as tl
 import plotly.graph_objs as go
-from plotly.tools import FigureFactory as FF
+from plotly.graph_objs import *
 from datetime import datetime
 import numpy as np
 import bt as bt
 
 import pandas.io.data as web
 
+tl.set_credentials_file(username='mattgbrady', api_key='cmjs1osucd')
 
 class futures():
     
@@ -73,15 +76,71 @@ def get_data_csv():
     
 
     raw_data = raw_data[tickers_included['long_ticker_name'].tolist()]
+    raw_data.index = pd.to_datetime(raw_data.index)
     
+    raw_data.columns = tickers_included['short_name'].values.tolist()
+    
+
+    raw_data = raw_data.reindex(pd.date_range(raw_data.index[0],raw_data.index[-1],freq='B'),method='ffill')
+
     return raw_data
 
+def trailing_return_score(raw_data,period=252):
+    
+    trailing_returns_df = pd.DataFrame()
+    
+    trailing_returns_df = raw_data.pct_change(periods=period)
+    
+    return trailing_returns_df
+    
+
+def plot_bar(data_df):
+    
+    new_df = pd.DataFrame(data=data_df.values[0], index=data_df.columns.tolist(),columns=['1 year return']).sort(columns='1 year return',ascending=False)
+
+    data = [go.Bar(
+                x= new_df.index.values,
+                y= new_df[new_df.columns[0]].values
+    
+    
+    )]
+
+   
+    layout = go.Layout(title='1 Year Total Return as of ' + data_df.index[0].strftime('%m-%d-%Y'))
+   
+    fig = go.Figure(data=data,layout=layout)
+    py.iplot(fig,filename='one_yr_total_return')   
+
+
+def drop_down_scatter(data_df):
+    
+
+    parser = {}
+    loop_list = []
+    true_false_dict = {}
+    #stopped here
+    default_list
+    counter=0
+    for column in data_df.columns:
+        
+        temp_df = data_df[column].dropna()
+        name = 'trace' + str(counter)
+        parser[name] = Scatter(
+           x=temp_df.index, y=temp_df.values
+        
+        )
+        loop_list.append(parser[name])
+        counter = counter + 1
+    fig = Figure(data=loop_list)
+    py.iplot(fig)
+
+    
 def main():
-    
+    #download_data()
     raw_data = get_data_csv()
-    
-    for ticker in raw_data.columns.tolist():
-        print(ticker)
+    trailing_1yr_return = trailing_return_score(raw_data)
+    #current = plot_bar(trailing_1yr_return.iloc[-1:])
+    drop_down_scatter(raw_data)
 
 
 main()
