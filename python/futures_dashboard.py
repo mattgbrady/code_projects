@@ -20,6 +20,9 @@ import pandas.io.data as web
 
 tl.set_credentials_file(username='mattgbrady', api_key='cmjs1osucd')
 
+
+quandl.ApiConfig.api_key = 'YMqrB1SXyjSUkTHYwpJ2'
+
 class futures():
     
     def __init__(self):
@@ -54,6 +57,8 @@ def download_data():
     quandl.ApiConfig.api_key = 'YMqrB1SXyjSUkTHYwpJ2'
 
     merged_data = quandl.get(tickers_download)
+    
+    merged_data.fillna(method='ffill',limit=2,inplace=True)
     
     merged_data.to_csv('quandl_data.csv')
 
@@ -101,12 +106,15 @@ def plot_bar(data_df):
     data = [go.Bar(
                 x= new_df.index.values,
                 y= new_df[new_df.columns[0]].values
+                #orientation = 'h'
     
     
     )]
 
    
-    layout = go.Layout(title='1 Year Total Return as of ' + data_df.index[0].strftime('%m-%d-%Y'))
+    layout = go.Layout(title='1 Year Total Return as of ' + data_df.index[0].strftime('%m-%d-%Y'),
+                       yaxis=dict(tickformat = '%'))
+                       
    
     fig = go.Figure(data=data,layout=layout)
     py.iplot(fig,filename='one_yr_total_return')   
@@ -117,29 +125,56 @@ def drop_down_scatter(data_df):
 
     parser = {}
     loop_list = []
-    true_false_dict = {}
+    #list([dict(arg=[],lable=,method='restyle',),dict(,,,)])
     #stopped here
-    default_list
+    default_list = [False] * len(data_df.columns.tolist())
+    plotly_tuple = ()
     counter=0
+    button_list = []
+    #for column in data_df.columns
+
     for column in data_df.columns:
-        
         temp_df = data_df[column].dropna()
         name = 'trace' + str(counter)
         parser[name] = Scatter(
-           x=temp_df.index, y=temp_df.values
-        
-        )
+           x=temp_df.index, y=temp_df.values, name=temp_df.name)
+
         loop_list.append(parser[name])
         counter = counter + 1
-    fig = Figure(data=loop_list)
-    py.iplot(fig)
+
+    counter = 0
+    loop_list_menus = []
+    for column in data_df.columns:
+        loop_list_menus = default_list.copy()
+        loop_list_menus[counter] = True
+        counter = counter + 1
+        button_list.append(dict(args=['visible', loop_list_menus],label=column,method='restyle'))
+    
 
     
+    layout = Layout(title='C1 Ratio Adj. 1st of Month Roll',autosize=False,margin=go.Margin(l=5,r=50,pad=0),
+                    
+                    updatemenus=list([dict(
+                                            x=-0.5,
+                                            y=5,
+                                            yanchor='top',
+                                            buttons=button_list)]))
+
+
+    fig = Figure(data=loop_list,layout=layout)
+    
+
+    
+    
+    py.iplot(fig,filename='drop_down_chart')
+
+
+
 def main():
-    #download_data()
+    download_data()
     raw_data = get_data_csv()
     trailing_1yr_return = trailing_return_score(raw_data)
-    #current = plot_bar(trailing_1yr_return.iloc[-1:])
+    current = plot_bar(trailing_1yr_return.iloc[-1:])
     drop_down_scatter(raw_data)
 
 
@@ -271,7 +306,6 @@ three_portfolios.fillna(value=0,inplace=True)
 long_short_portfolio = beta(three_portfolios['Crude Long/Short'], name='Crude Long/Short')
 long_portfolio = beta(three_portfolios['Crude Long Only'], name='Crude Long')
 short_portfolio = beta(three_portfolios['Crude Short Only'], name='Crude Short')
-'''
 #print(long_short_portfolio)
 #res = bt.run(long_short_portfolio)    
     
@@ -280,11 +314,8 @@ short_portfolio = beta(three_portfolios['Crude Short Only'], name='Crude Short')
 
 
 
-'''
-py.sign_in('mattgbrady','cmjs1osucd')
 
 
-quandl.ApiConfig.api_key = 'YMqrB1SXyjSUkTHYwpJ2'
 
 
 
