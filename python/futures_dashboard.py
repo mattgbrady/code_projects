@@ -4,12 +4,13 @@ Created on Thu Aug 18 17:23:22 2016
 
 @author: Matt Brady
 """
-import bbgREST as bbg
+
 import pandas as pd
 import quandl
 import time
 import plotly.plotly as py
 import plotly.tools as tl
+from plotly.tools import FigureFactory as FF 
 import plotly.graph_objs as go
 from plotly.graph_objs import *
 from datetime import datetime
@@ -29,14 +30,6 @@ class futures():
         
         self.name = 'hi'
         
-def get_data(ticker_list):
-    
-    dt_start = pd.datetime(1992,12,1)
-
-    bl_data = bbg.get_histData(ticker_list,['PX_LAST'],dt_start,pd.datetime.today().date(),freq='DAILY')
-    
-    bl_data = bl_data.pivot(index='date', columns='Ticker', values='PX_LAST')
-    return bl_data
 
 def beta(data, name='Strategy'):
     s = bt.Strategy(name, [bt.algos.RunOnce(),
@@ -49,9 +42,7 @@ def beta(data, name='Strategy'):
 def download_data():
     
     futures_tickers = pd.read_csv('futures_tickers.csv')
-    futures_tickers['number'] = futures_tickers['number'].to_string()
-    tickers_download = futures_tickers['database'] + '/' + futures_tickers['exchange'] + '_' + futures_tickers['symbol'] + str(1) + '_' + futures_tickers['method'] 
-
+    tickers_download = futures_tickers['database_ticker']
     tickers_download = tickers_download.tolist()
 
     quandl.ApiConfig.api_key = 'YMqrB1SXyjSUkTHYwpJ2'
@@ -66,10 +57,25 @@ def get_data_csv():
     
     raw_data = pd.read_csv('quandl_data.csv',index_col=0)
     
-
     
     tickers = raw_data.columns.tolist()
-
+    
+    build_df = pd.DataFrame()
+    counter = 0
+    for ticker in tickers:
+        print(counter)
+        counter = counter + 1
+        hyphen_location = ticker.find('-')
+        ticker_name = ticker[0:hyphen_location-1]
+        ticker_type = ticker[hyphen_location+2:len(ticker)]
+        loop_df = pd.DataFrame(raw_data[ticker])
+        loop_df['ticker'] = ticker_name
+        loop_df['type'] = ticker_type
+        loop_df.columns = ['value','ticker','type']
+        build_df = pd.concat([build_df,loop_df],axis=0)
+        
+    build_df.to_csv('quandl_data_formatted.csv')
+'''
     tickers = [x for x in tickers if "- Settle" in x]
     
     raw_data = raw_data[tickers]
@@ -77,19 +83,19 @@ def get_data_csv():
    
     tickers_included = pd.read_csv('futures_tickers.csv')
     tickers_included = tickers_included[tickers_included['include'] == True]
-    tickers_included['long_ticker_name'] = tickers_included['database'] + '/' + tickers_included['exchange'] + '_' + tickers_included['symbol'] + str(1) + '_' + tickers_included['method']  + ' - Settle'
+    tickers_included['long_ticker_name'] = tickers_included['database_ticker'] +  ' - Settle'
     
 
     raw_data = raw_data[tickers_included['long_ticker_name'].tolist()]
     raw_data.index = pd.to_datetime(raw_data.index)
     
-    raw_data.columns = tickers_included['short_name'].values.tolist()
+    raw_data.columns = tickers_included['short_name_unique'].values.tolist()
     
 
     raw_data = raw_data.reindex(pd.date_range(raw_data.index[0],raw_data.index[-1],freq='B'),method='ffill')
 
     return raw_data
-
+'''
 def trailing_return_score(raw_data,period=252):
     
     trailing_returns_df = pd.DataFrame()
@@ -168,15 +174,34 @@ def drop_down_scatter(data_df):
     
     py.iplot(fig,filename='drop_down_chart')
 
-
+def one_year_test(data_df):
+    pass
+    
+def create_table(data_df):
+    
+    table = FF.create_table(table_df,index=True, index_title='Date')
+    py.iplot(table, filename='crude_table')
+    
 
 def main():
-    download_data()
+    #download_data()
     raw_data = get_data_csv()
+
+'''
     trailing_1yr_return = trailing_return_score(raw_data)
     current = plot_bar(trailing_1yr_return.iloc[-1:])
-    drop_down_scatter(raw_data)
-
+    #drop_down_scatter(raw_data)
+    new_df = pd.Series(trailing_1yr_return.iloc[-1:].values[0],index=trailing_1yr_return.iloc[-1:].columns.tolist())
+    new_df = new_df.to_frame()
+    new_df.columns = ['One Year Return']
+    new_df.sort(columns=['One Year Return'],inplace=True,ascending=False)
+    print(new_df)
+    #table_values = pd.DataFrame(trailing_1yr_return.iloc[-1:].values,index=trailing_1yr_return.columns.tolist(),columns=['Future'])
+    layout = go.Layout(yaxis=dict(tickformat = '%'))
+    table = FF.create_table(new_df,index=True)
+    new_df.to_csv('test.csv')
+    py.iplot(table, filename='crude_table')
+''' 
 
 main()
 
