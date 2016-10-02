@@ -18,6 +18,7 @@ import numpy as np
 import bt as bt
 
 import pandas.io.data as web
+import dropbox
 
 tl.set_credentials_file(username='mattgbrady', api_key='cmjs1osucd')
 
@@ -43,6 +44,8 @@ def download_data():
     
     futures_tickers = pd.read_csv('futures_tickers.csv')
     tickers_download = futures_tickers['database_ticker']
+    
+    print(len(tickers_download))
     tickers_download = tickers_download.tolist()
 
     quandl.ApiConfig.api_key = 'YMqrB1SXyjSUkTHYwpJ2'
@@ -59,12 +62,13 @@ def get_data_csv():
     
     
     tickers = raw_data.columns.tolist()
+    print(len(tickers))
     
     build_df = pd.DataFrame()
     counter = 0
     for ticker in tickers:
-        print(counter)
         counter = counter + 1
+        print(counter)
         hyphen_location = ticker.find('-')
         ticker_name = ticker[0:hyphen_location-1]
         ticker_type = ticker[hyphen_location+2:len(ticker)]
@@ -72,8 +76,9 @@ def get_data_csv():
         loop_df['ticker'] = ticker_name
         loop_df['type'] = ticker_type
         loop_df.columns = ['value','ticker','type']
+        loop_df.dropna(inplace=True)
         build_df = pd.concat([build_df,loop_df],axis=0)
-        
+
     build_df.to_csv('quandl_data_formatted.csv')
 '''
     tickers = [x for x in tickers if "- Settle" in x]
@@ -121,7 +126,7 @@ def plot_bar(data_df):
     layout = go.Layout(title='1 Year Total Return as of ' + data_df.index[0].strftime('%m-%d-%Y'),
                        yaxis=dict(tickformat = '%'))
                        
-   
+
     fig = go.Figure(data=data,layout=layout)
     py.iplot(fig,filename='one_yr_total_return')   
 
@@ -183,10 +188,96 @@ def create_table(data_df):
     py.iplot(table, filename='crude_table')
     
 
+def atr():
+    
+    
+    data_df = pd.read_csv('quandl_data_formatted.csv',index_col=0)
+    ticker_info_df = pd.read_csv('futures_tickers.csv',index_col=0)
+    
+    ticker_info_df = ticker_info_df[ticker_info_df['include'] == True]
+    
+    
+    data_df['short_name'] = data_df['ticker'].map(ticker_info_df['short_name_unique'])
+    
+    ticker_list = ticker_info_df['short_name_unique'].unique()
+ 
+    outer_loop_df = pd.DataFrame()
+    for ticker in ticker_list:
+        print(ticker)
+        loop_df = data_df[data_df['short_name'] == ticker]
+
+        loop_df.pop('ticker')
+        loop_df = loop_df.pivot(columns='type',values='value')
+
+        #find max 
+        loop_df['range_high_low'] = loop_df['High'] - loop_df['Low']
+        loop_df['range_high'] = abs(loop_df['High'] - loop_df['Settle'].shift(1))     
+        loop_df['range_low'] = abs(loop_df['Low'] - loop_df['Settle'].shift(1))
+        
+        loop_df['ATR'] = loop_df[['range_high_low','range_high','range_low']].max(axis=1)
+
+        loop_df['ema_atr'] = pd.ewma(loop_df['ATR'], min_periods = 100, halflife=100)
+        
+        loop_df['ema_atr_relative'] = loop_df['ema_atr'] / loop_df['Settle']
+        
+        loop_df['ema_art_percentile'] = loop_df['ema_atr_relative'].rank(pct=True)
+        
+        loop_df = loop_df[['ema_atr','ema_atr_relative']]
+        
+        inner_loop_df = pd.DataFrame()
+        for column in loop_df.columns:
+            
+            temp_df = loop_df[column].to_frame()
+            
+            temp_df['type'] = column
+       
+            temp_df.columns = ['values','type']
+            temp_df.reset_index(inplace=True)
+            
+            inner_loop_df = inner_loop_df.append(temp_df)
+            
+        
+        inner_loop_df['ticker'] = ticker
+        
+        inner_loop_df.dropna(axis=0,inplace=True)
+    
+        
+    
+        outer_loop_df = outer_loop_df.append(inner_loop_df)
+        
+        print(outer_loop_df.loc[outer_loop_df['type'] == 'ema_atr','ATR','Rank'])
+
+    outer_loop_df.set_index('Date',inplace=True)        
+    outer_loop_df.set_index('Date',inplace=True)
+    outer_loop_df.to_csv('art.csv')
+   
+        #df_1 = pd.DataFrame(loop_df['ema_atr'], index=loop_df.index)
+        
+        #df_2 = pd.DataFrame(loop_df['ema_art_percentile'], index=loop_df.index)
+
+        #combined_df = pd.append([df_1,df_2],axis=1)
+        
+        #print(loop_df.stack(level=['ema_atr','ema_art_percentile']))
+        
 def main():
     #download_data()
-    raw_data = get_data_csv()
+    #raw_data = get_data_csv()
+    atr()
 
+
+def upload_dropbox():
+    """
+    Connect and authenticate with dropbox
+    """
+    app_key = 'k2sjusuvoxu48je'
+    app_secret = 'jdehhyp54lmrdix'
+    key = '4oW3DTXjnQsAAAAAAAAHNfQqyCb8ZPgFgoTsrNAplsygt_TonjYVZLGn0oKkWn6Z'
+    dbx = dropbox.Dropbox(key)
+    #'aGKqdaqoKwAAAAAAAAAAIovGNRj-sUb7BZtTsLX01r8y3UG0WV1aHax_4hKp2C6v'
+    f = open('futures_tickers.csv', 'rb')
+
+    #client.put_file('/futures_dashboard.csv', f)
+    dbx.files_upload(f,'/test.csv',dropbox.files.WriteMode('overwrite', value=None))
 '''
     trailing_1yr_return = trailing_return_score(raw_data)
     current = plot_bar(trailing_1yr_return.iloc[-1:])
