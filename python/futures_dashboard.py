@@ -38,7 +38,9 @@ def beta(data, name='Strategy'):
                            bt.algos.WeighEqually(),
                            bt.algos.Rebalance()])
     
-    return bt.Backtest(s, data)   
+    bt_engine = bt.Backtest(s, data) 
+    res = bt.run(bt_engine) 
+    return res  
 
 def download_data():
     
@@ -200,6 +202,8 @@ def atr():
     data_df['short_name'] = data_df['ticker'].map(ticker_info_df['short_name_unique'])
     
     ticker_list = ticker_info_df['short_name_unique'].unique()
+    
+    print(len(ticker_list))
  
     outer_loop_df = pd.DataFrame()
     for ticker in ticker_list:
@@ -245,9 +249,9 @@ def atr():
     
         outer_loop_df = outer_loop_df.append(inner_loop_df)
         
-        print(outer_loop_df.loc[outer_loop_df['type'] == 'ema_atr','ATR','Rank'])
+        #print(outer_loop_df.loc[outer_loop_df['type'] == 'ema_atr','ATR','Rank'])
 
-    outer_loop_df.set_index('Date',inplace=True)        
+      
     outer_loop_df.set_index('Date',inplace=True)
     outer_loop_df.to_csv('art.csv')
    
@@ -258,11 +262,118 @@ def atr():
         #combined_df = pd.append([df_1,df_2],axis=1)
         
         #print(loop_df.stack(level=['ema_atr','ema_art_percentile']))
+
+
+def momentum_test(back_test_df,look_back):
+
+        back_test_df['one year ago price'] = back_test_df['value'].shift(look_back)
         
+        back_test_df['signal'] = back_test_df['value']- back_test_df['one year ago price']
+        
+        back_test_df.dropna(inplace=True)
+        back_test_df['weights'] = np.where(back_test_df['signal'] > 0, 1, -1)
+        back_test_df['weights'] = back_test_df['weights'].shift(1)
+        
+        
+        asset_return_df_1w= back_test_df['value'].pct_change(periods=1).dropna().to_frame()
+        asset_return_df_1w.columns = ['weights']
+    
+        portfolio_returns = asset_return_df_1w * back_test_df['weights'].to_frame()
+        
+        portfolio_returns.dropna(inplace=True)
+        portfolio_returns =  portfolio_returns.add(1).cumprod()
+        
+        portfolio_returns.plot(logy=True)
+        
+        return portfolio_returns
+    
+
+def single_backtest():
+    
+    data_df = pd.read_csv('quandl_data_formatted.csv',index_col=0)
+    
+
+    data_df.index = pd.to_datetime(data_df.index)
+
+    
+   
+    ticker_info_df = pd.read_csv('futures_tickers.csv',index_col=0)
+    
+    ticker_info_df = ticker_info_df[ticker_info_df['include'] == True]
+    
+    
+    data_df['short_name'] = data_df['ticker'].map(ticker_info_df['short_name_unique'])
+    data_df_settle = data_df[data_df.type == 'Settle']
+    
+    #re)indexdata_df_settle = data_df_settle.re
+    
+    ticker_list = ticker_info_df['short_name_unique'].unique()
+    
+    performance_char = []
+    performance_df = pd.DataFrame()
+    index_labels = ['Start Data','End Date','Total Return','Annualized Return','1yr Return','5yr Return',
+                            'Sharpe','Volatility','Max Drawdown',
+                            'Average  Drawdown','Best Year','Worst Year','12m Win %']
+   
+    for ticker in range(0,1):
+        
+        
+        ticker = ticker_list[ticker]
+        temp_df = data_df_settle[data_df_settle.short_name == ticker]
+        temp_df = temp_df.reindex(pd.date_range(temp_df.index[0],temp_df.index[-1],freq='W'),method='ffill')
+      
+        back_test_df = temp_df['value'].to_frame()
+        
+        index_total_rt_52 = momentum_test(back_test_df,52)
+        index_total_rt_52 = momentum_test(back_test_df,26)
+        index_total_rt_52 = momentum_test(back_test_df,20)
+        index_total_rt_52 = momentum_test(back_test_df,12)
+        index_total_rt_52 = momentum_test(back_test_df,1)
+
+        
+'''
+        res = beta(portfolio_returns, name=ticker)
+       
+        total_return = res.stats.loc['total_return',:][0]
+        one_year = res.stats.loc['one_year',:][0]
+        five_year = res.stats.loc['five_year',:][0]
+        
+        max_drawdown = res.stats.loc['max_drawdown',:][0]
+        avg_drawdown = res.stats.loc['avg_drawdown',:][0]
+        monthly_sharpe = res.stats.loc['monthly_sharpe',:][0]
+        volatility_m = res.stats.loc['monthly_vol',:][0]
+        
+        win_12m = res.stats.loc['twelve_month_win_perc',:][0]
+        
+        best_yr = res.stats.loc['best_year',:][0]
+        worst_yr = res.stats.loc['worst_year',:][0]
+        
+        num_of_time =  len(res.prices) - 1
+        ann_return = ((total_return + 1) ** (52/num_of_time)) - 1
+        
+        start_date = res.stats.loc['start',:][0]
+        end_date = res.stats.loc['end',:][0]
+     
+        performance_char = [start_date,end_date,total_return,ann_return,one_year,five_year,
+                            monthly_sharpe,volatility_m,max_drawdown,
+                            avg_drawdown,best_yr,worst_yr,win_12m]
+        
+
+               
+        temp_df = pd.DataFrame(performance_char,index=index_labels,columns=[ticker])
+        
+        performance_df = pd.concat([performance_df,temp_df],axis=1)
+        res.display()
+        
+    #performance_df.to_csv('performance_stats')
+    print(performance_df)
+'''
+      
 def main():
     #download_data()
     #raw_data = get_data_csv()
-    atr()
+    #atr()
+    single_backtest()
 
 
 def upload_dropbox():
